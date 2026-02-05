@@ -11,19 +11,18 @@ const ClientSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Inicializa o model uma vez
-let Client;
-let dbPromise;
+// 🔑 IMPORTANTE: Variáveis compartilhadas entre Client e Routine
+export let jarvisDB = null;
+export let Client = null;
 
 const getClientModel = async () => {
   if (Client) return Client;
-  
-  if (!dbPromise) {
-    dbPromise = getJarvisDB();
+
+  if (!jarvisDB) {
+    jarvisDB = await getJarvisDB();
   }
-  
-  const db = await dbPromise;
-  Client = db.models.Client || db.model("Client", ClientSchema);
+
+  Client = jarvisDB.models.Client || jarvisDB.model("Client", ClientSchema);
   return Client;
 };
 

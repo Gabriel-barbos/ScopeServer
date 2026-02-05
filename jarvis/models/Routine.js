@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { getJarvisDB } from "../../config/databases.js";
+import getClientModel, { jarvisDB as sharedDB } from "./Client.js"; 
 
 const RoutineSchema = new mongoose.Schema(
   {
@@ -19,18 +19,17 @@ const RoutineSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Inicializa o model uma vez
-let Routine;
-let dbPromise;
+let Routine = null;
 
 const getRoutineModel = async () => {
   if (Routine) return Routine;
+
+  //  Garante que Client está registrado PRIMEIRO
+  await getClientModel();
+
+  // Usa o MESMO database que Client usa
+  const db = sharedDB;
   
-  if (!dbPromise) {
-    dbPromise = getJarvisDB();
-  }
-  
-  const db = await dbPromise;
   Routine = db.models.Routine || db.model("Routine", RoutineSchema);
   return Routine;
 };
