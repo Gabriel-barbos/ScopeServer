@@ -9,7 +9,7 @@ router.post("/", async (req, res) => {
   try {
     // Garante que Client está registrado antes
     await getClientModel();
-    const Routine = await getRoutineModel();
+    const Routine = await getRoutineModel();  
     
     console.log("Payload recebido:", req.body);
     const routine = await Routine.create(req.body);

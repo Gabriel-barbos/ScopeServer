@@ -1,6 +1,6 @@
 import ExcelReader from './ExcelReader.js';
-import { initRoutineModel } from "../models/Routine.js";
-const Routine = await initRoutineModel();
+import getRoutineModel from "../models/Routine.js";
+const Routine = await getRoutineModel();
 
 class RoutineEngineTest {
   static async execute({ filePath }) {

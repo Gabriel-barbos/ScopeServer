@@ -1,6 +1,7 @@
 import ExcelReader from './ExcelReader.js';
-import { initRoutineModel } from "../models/Routine.js";
-const Routine = await initRoutineModel();
+import getRoutineModel from "../models/Routine.js";
+
+const Routine = await getRoutineModel();
 
 import getToken from './GetToken.js';
 import addVehiclesToGroup from './AddVehicle.js';
