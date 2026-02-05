@@ -17,7 +17,6 @@ export const initClientModel = async () => {
   if (Client) return Client;
 
   const conn = await getJarvisDB();
-
   Client = conn.models.Client || conn.model("Client", ClientSchema);
   return Client;
 };

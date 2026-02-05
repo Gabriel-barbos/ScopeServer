@@ -1,16 +1,19 @@
 import express from "express";
 import { initRoutineModel } from "../models/Routine.js";
+import { initClientModel } from "../models/Client.js";
+
 
 const router = express.Router();
 let Routine;
 
 router.use(async (_, __, next) => {
   if (!Routine) {
-    Routine = await initRoutineModel();
+  
+    await initClientModel();      // registra Client na conexão
+    Routine = await initRoutineModel(); // registra Routine
   }
   next();
 });
-
 
 //create a new routine
 router.post("/", async (req, res) => {
