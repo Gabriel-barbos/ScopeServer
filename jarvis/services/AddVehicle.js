@@ -5,7 +5,7 @@ async function addVehiclesToGroup({ token, vehicleIdentifiers, vehicleGroupId })
 
   for (const identifier of vehicleIdentifiers) {
     try {
-      const searchRes = await fetch('https://scopeserver.onrender.com/api/jarvis', {
+      const searchRes = await fetch('https://scopeserver.onrender.com/api/jarvis/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
