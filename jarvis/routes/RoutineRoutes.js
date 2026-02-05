@@ -1,28 +1,21 @@
 import express from "express";
-import { initRoutineModel } from "../models/Routine.js";
-import { initClientModel } from "../models/Client.js";
-
+import getRoutineModel from "../models/Routine.js";
+import getClientModel from "../models/Client.js";
 
 const router = express.Router();
-let Routine;
 
-router.use(async (_, __, next) => {
-  if (!Routine) {
-  
-    await initClientModel();      // registra Client na conexão
-    Routine = await initRoutineModel(); // registra Routine
-  }
-  next();
-});
-
-//create a new routine
+// Create a new routine
 router.post("/", async (req, res) => {
   try {
+    // Garante que Client está registrado antes
+    await getClientModel();
+    const Routine = await getRoutineModel();
+    
     console.log("Payload recebido:", req.body);
     const routine = await Routine.create(req.body);
     res.status(201).json(routine);
   } catch (error) {
-     console.error("Erro completo:", error);
+    console.error("Erro completo:", error);
     res.status(400).json({
       message: "Erro ao criar rotina",
       error: error.message,
@@ -30,14 +23,18 @@ router.post("/", async (req, res) => {
   }
 });
 
-//list all routines
+// List all routines
 router.get("/", async (req, res) => {
   try {
-    const routines = await Routine.find()
-      .populate("client", "name login password");
+    // 🔑 CHAVE: Garante que Client está registrado ANTES do populate
+    await getClientModel();
+    const Routine = await getRoutineModel();
+    
+    const routines = await Routine.find().populate("client", "name login password");
 
     res.json(routines);
   } catch (error) {
+    console.error("Erro ao listar rotinas:", error);
     res.status(500).json({
       message: "Erro ao listar rotinas",
       error: error.message,
@@ -45,11 +42,17 @@ router.get("/", async (req, res) => {
   }
 });
 
-//get routine by id
+// Get routine by id
 router.get("/:id", async (req, res) => {
   try {
-    const routine = await Routine.findById(req.params.id)
-      .populate("client", "name login password");
+    // Garante que Client está registrado antes
+    await getClientModel();
+    const Routine = await getRoutineModel();
+    
+    const routine = await Routine.findById(req.params.id).populate(
+      "client",
+      "name login password"
+    );
 
     if (!routine) {
       return res.status(404).json({ message: "Rotina não encontrada" });
@@ -64,14 +67,15 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-//update routine by id
+// Update routine by id
 router.put("/:id", async (req, res) => {
   try {
-    const routine = await Routine.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const Routine = await getRoutineModel();
+    
+    const routine = await Routine.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!routine) {
       return res.status(404).json({ message: "Rotina não encontrada" });
@@ -86,9 +90,11 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-//delete routine by id
+// Delete routine by id
 router.delete("/:id", async (req, res) => {
   try {
+    const Routine = await getRoutineModel();
+    
     const routine = await Routine.findByIdAndDelete(req.params.id);
 
     if (!routine) {

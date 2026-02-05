@@ -1,22 +1,12 @@
 import express from "express";
-import { initClientModel } from "../models/Client.js";
+import getClientModel from "../models/Client.js";
 
 const router = express.Router();
-let Client;
 
-// inicializa uma vez
-router.use(async (_, __, next) => {
-  if (!Client) {
-    Client = await initClientModel();
-  }
-  next();
-});;
-
-
-//criar client
-
+// Criar client
 router.post("/", async (req, res) => {
   try {
+    const Client = await getClientModel();
     const { name, login, password, type } = req.body;
 
     if (!name || !login || !password || !type) {
@@ -41,9 +31,10 @@ router.post("/", async (req, res) => {
   }
 });
 
-//list clients
+// List clients
 router.get("/", async (req, res) => {
   try {
+    const Client = await getClientModel();
     const clients = await Client.find();
     res.json(clients);
   } catch (error) {
@@ -51,9 +42,10 @@ router.get("/", async (req, res) => {
   }
 });
 
-//get client by id
+// Get client by id
 router.get("/:id", async (req, res) => {
   try {
+    const Client = await getClientModel();
     const client = await Client.findById(req.params.id).select("-password");
 
     if (!client) {
@@ -66,9 +58,10 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-//update client
+// Update client
 router.put("/:id", async (req, res) => {
   try {
+    const Client = await getClientModel();
     const { name, login, password, type } = req.body;
 
     const client = await Client.findByIdAndUpdate(
@@ -87,9 +80,10 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-;//delete client
+// Delete client
 router.delete("/:id", async (req, res) => {
   try {
+    const Client = await getClientModel();
     const client = await Client.findByIdAndDelete(req.params.id);
 
     if (!client) {

@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import { getJarvisDB } from "../../config/databases.js";
 
-
 const RoutineSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
@@ -20,12 +19,20 @@ const RoutineSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Inicializa o model uma vez
 let Routine;
+let dbPromise;
 
-export const initRoutineModel = async () => {
+const getRoutineModel = async () => {
   if (Routine) return Routine;
-
-  const conn = await getJarvisDB();
-  Routine = conn.models.Routine || conn.model("Routine", RoutineSchema);
+  
+  if (!dbPromise) {
+    dbPromise = getJarvisDB();
+  }
+  
+  const db = await dbPromise;
+  Routine = db.models.Routine || db.model("Routine", RoutineSchema);
   return Routine;
 };
+
+export default getRoutineModel;

@@ -11,12 +11,20 @@ const ClientSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Inicializa o model uma vez
 let Client;
+let dbPromise;
 
-export const initClientModel = async () => {
+const getClientModel = async () => {
   if (Client) return Client;
-
-  const conn = await getJarvisDB();
-  Client = conn.models.Client || conn.model("Client", ClientSchema);
+  
+  if (!dbPromise) {
+    dbPromise = getJarvisDB();
+  }
+  
+  const db = await dbPromise;
+  Client = db.models.Client || db.model("Client", ClientSchema);
   return Client;
 };
+
+export default getClientModel;
