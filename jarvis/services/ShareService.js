@@ -5,7 +5,7 @@ async function shareVehicles({ token, vehicleIdentifiers, shareGroupId }) {
 
   for (const identifier of vehicleIdentifiers) {
     try {
-      const searchRes = await fetch('http://localhost:3001/proxy', {
+      const searchRes = await fetch('https://scopeserver.onrender.com/api/jarvis/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -27,7 +27,7 @@ async function shareVehicles({ token, vehicleIdentifiers, shareGroupId }) {
         continue;
       }
 
-      await fetch('http://localhost:3001/proxy', {
+      await fetch('https://scopeserver.onrender.com/api/jarvis/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
