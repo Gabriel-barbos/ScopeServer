@@ -17,13 +17,13 @@ class ServiceController {
 
   // Criar serviço a partir de validação
   async createFromValidation(req, res) {
-    try {
-      const { scheduleId, validationData } = req.body;
-
-      const Service = await getServiceModel();
-      const Schedule = await getScheduleModel();
-      const Client = await getClientModel();
-      const Product = await getProductModel();
+ try {
+    const { scheduleId, validationData } = req.body;
+    
+    const Client = await getClientModel();
+    const Product = await getProductModel();
+    const Schedule = await getScheduleModel();
+    const Service = await getServiceModel();
       const schedule = await Schedule.findById(scheduleId)
         .populate("client")
         .populate("product");
