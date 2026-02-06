@@ -1,0 +1,64 @@
+{
+"ide": {
+  "cUF": "35",
+  "natOp": "REMESSA AO COMODATO",
+  "mod": "55",
+  "serie": "1",
+  "tpNF": "1",
+  "finNFe": "1",
+  "idDest": "2",
+  "tpImp": "1",
+  "tpEmis": "1",
+  "cMunFG": "3550308",
+  "indFinal": "0",
+  "indPres": "9",
+  "indIntermed": "0",
+  "procEmi": "0",
+  "verProc": "1.0",
+  "tpAmb": "1"
+},
+
+  "emit": {
+    "CNPJ": "38079937000177",
+    "xNome": "Scope Brasil Ltda",
+    "IE": "130410857115",
+    "CRT": "3",                        
+    "enderEmit": {
+      "xLgr": "Rua Borges de Figueiredo",
+      "nro": "303",
+      "xBairro": "Mooca",
+      "cMun": "3550308",
+      "xMun": "São Paulo",
+      "UF": "SP",
+      "CEP": "03110010",
+      "cPais": "1058",
+      "xPais": "BRASIL",
+      "fone": "11974746264"
+    }
+  },
+
+  "transp": {
+    "modFrete": "9"                      
+  },
+
+  "pag": {
+    "detPag": [
+      {
+        "indPag": 0,                     
+        "tPag": "90",                    
+        "vPag": 0.00                    
+      }
+    ]
+  },
+
+  "infAdic": {
+    "infCpl": "Documento emitido por meio de integração automática."
+  },
+
+  "prodDefaults": {
+    "indTot": 1,                          
+    "orig": 0,                            
+    "CST": "00",                          
+    "uCom": "UN"
+  }
+}
