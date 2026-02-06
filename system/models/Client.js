@@ -11,16 +11,12 @@ const ClientSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-let systemDB = null;
 let Client = null;
 
 const getClientModel = async () => {
   if (Client) return Client;
   
-  if (!systemDB) {
-    systemDB = await getSystemDB();
-  }
-  
+  const systemDB = await getSystemDB();
   Client = systemDB.models.Client || systemDB.model("Client", ClientSchema);
   return Client;
 };

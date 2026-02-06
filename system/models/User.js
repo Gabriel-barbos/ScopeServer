@@ -19,16 +19,12 @@ userSchema.pre("save", async function () {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-let systemDB = null;
 let User = null;
 
 const getUserModel = async () => {
   if (User) return User;
   
-  if (!systemDB) {
-    systemDB = await getSystemDB();
-  }
-  
+  const systemDB = await getSystemDB();
   User = systemDB.models.User || systemDB.model("User", userSchema);
   return User;
 };

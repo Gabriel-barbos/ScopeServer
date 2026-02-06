@@ -1,4 +1,3 @@
-// system/models/index.js
 
 import getClientModel from "./Client.js";
 import getProductModel from "./Product.js";
@@ -11,9 +10,11 @@ let modelsInitialized = false;
 export const initializeModels = async () => {
   if (modelsInitialized) return;
 
-  await getUserModel();
+  // IMPORTANTE: Aguardar a criação de TODOS os models
+  // Dependências primeiro (Client e Product), depois os que referenciam
   await getClientModel();
   await getProductModel();
+  await getUserModel();
   await getScheduleModel();
   await getServiceModel();
 

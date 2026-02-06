@@ -11,16 +11,12 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-let systemDB = null;
 let Product = null;
 
 const getProductModel = async () => {
   if (Product) return Product;
   
-  if (!systemDB) {
-    systemDB = await getSystemDB();
-  }
-  
+  const systemDB = await getSystemDB();
   Product = systemDB.models.Product || systemDB.model("Product", productSchema);
   return Product;
 };

@@ -14,18 +14,15 @@ const ServiceSchema = new mongoose.Schema(
     },
     notes: { type: String },
     createdBy: { type: String },
-
     product: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product"
     },
-
     client: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Client",
       required: true
     },
-
     deviceId: { type: String, required: true },
     technician: { type: String, required: true },
     provider: { type: String },
@@ -42,12 +39,10 @@ const ServiceSchema = new mongoose.Schema(
       default: "concluido"
     },
     validatedAt: { type: Date, default: Date.now },
-
     schedule: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Schedule"
     },
-
     source: {
       type: String,
       enum: ["validation", "import"],
@@ -57,16 +52,12 @@ const ServiceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-let systemDB = null;
 let Service = null;
 
 const getServiceModel = async () => {
   if (Service) return Service;
   
-  if (!systemDB) {
-    systemDB = await getSystemDB();
-  }
-  
+  const systemDB = await getSystemDB();
   Service = systemDB.models.Service || systemDB.model("Service", ServiceSchema);
   return Service;
 };

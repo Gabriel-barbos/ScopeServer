@@ -1,4 +1,8 @@
+// system/controllers/ScheduleController.js
+
 import getScheduleModel from "../models/Schedule.js";
+import getClientModel from "../models/Client.js";
+import getProductModel from "../models/Product.js";
 import {
   normalizeServiceType,
   normalizeStatus,
@@ -6,15 +10,11 @@ import {
   handleError,
   validateBulkArray
 } from "../utils/scheduleHelper.js";
-import getClientModel from "../models/Client.js";
-import getProductModel from "../models/Product.js";
-
 
 const NOT_FOUND_MSG = "Agendamento não encontrado";
 
 class ScheduleController {
-
-    constructor() {
+  constructor() {
     this.create = this.create.bind(this);
     this.list = this.list.bind(this);
     this.findById = this.findById.bind(this);
@@ -25,9 +25,9 @@ class ScheduleController {
     this.bulkUpdate = this.bulkUpdate.bind(this);
   }
   
-  // CRUD Básico
-async create(req, res) {
+  async create(req, res) {
     try {
+      // Garante que Client e Product existem antes
       await getClientModel();
       await getProductModel();
       const Schedule = await getScheduleModel();
@@ -38,11 +38,15 @@ async create(req, res) {
       handleError(res, error, 400);
     }
   }
-async list(req, res) {
+
+  async list(req, res) {
     try {
+      // Garante que Client e Product existem antes
       await getClientModel();
       await getProductModel();
       const Schedule = await getScheduleModel();
+      
+      console.log("Models registrados:", Object.keys(Schedule.db.models));
       
       const schedules = await Schedule.find()
         .populate("client", "name image")
@@ -50,11 +54,12 @@ async list(req, res) {
         .sort({ scheduledDate: 1 });
       res.json(schedules);
     } catch (error) {
+      console.error("ERRO COMPLETO:", error);
       handleError(res, error);
     }
   }
 
- async findById(req, res) {
+  async findById(req, res) {
     try {
       await getClientModel();
       await getProductModel();
@@ -94,8 +99,7 @@ async list(req, res) {
     }
   }
 
-
-async delete(req, res) {
+  async delete(req, res) {
     try {
       await getClientModel();
       await getProductModel();
@@ -133,8 +137,7 @@ async delete(req, res) {
     }
   }
 
-  // Bulk Operations
- async bulkCreate(req, res) {
+  async bulkCreate(req, res) {
     try {
       const { schedules } = req.body;
       if (!validateBulkArray(schedules, res)) return;
@@ -209,7 +212,7 @@ async delete(req, res) {
     }
   }
 
-  // Métodos privados auxiliares
+  // Resto do código permanece igual...
   #validateSchedule(schedule, idx) {
     const errors = [];
     const requiredFields = ['vin', 'model', 'serviceType', 'client'];
@@ -285,8 +288,7 @@ async delete(req, res) {
     let successCount = 0;
     const updateErrors = [];
 
-     const Schedule = await getScheduleModel();
-    // Usar bulkWrite para melhor performance
+    const Schedule = await getScheduleModel();
     const bulkOps = updates.map(({ vin, updateData }) => ({
       updateOne: {
         filter: { vin },
@@ -295,7 +297,6 @@ async delete(req, res) {
     }));
 
     try {
-
       const result = await Schedule.bulkWrite(bulkOps, { ordered: false });
       successCount = result.modifiedCount;
     } catch (error) {
