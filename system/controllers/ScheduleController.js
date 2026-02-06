@@ -6,6 +6,9 @@ import {
   handleError,
   validateBulkArray
 } from "../utils/scheduleHelper.js";
+import getClientModel from "../models/Client.js";
+import getProductModel from "../models/Product.js";
+
 
 const NOT_FOUND_MSG = "Agendamento não encontrado";
 
@@ -25,6 +28,8 @@ class ScheduleController {
   // CRUD Básico
   async create(req, res) {
     try {
+      await getClientModel();
+      await getProductModel();
       const Schedule = await getScheduleModel();
       const schedule = await Schedule.create(req.body);
       res.status(201).json(schedule);
@@ -35,6 +40,9 @@ class ScheduleController {
 
   async list(req, res) {
     try {
+        
+      await getClientModel();
+      await getProductModel();
       const Schedule = await getScheduleModel();
       const schedules = await Schedule.find()
         .populate("client", "name image")
@@ -48,6 +56,9 @@ class ScheduleController {
 
   async findById(req, res) {
     try {
+        
+      await getClientModel();
+      await getProductModel();
       const Schedule = await getScheduleModel();
       const schedule = await Schedule.findById(req.params.id)
         .populate("client")
@@ -64,6 +75,9 @@ class ScheduleController {
 
   async update(req, res) {
     try {
+        
+      await getClientModel();
+      await getProductModel();
       const Schedule = await getScheduleModel();
       const schedule = await Schedule.findByIdAndUpdate(
         req.params.id,
@@ -82,6 +96,9 @@ class ScheduleController {
 
   async delete(req, res) {
     try {
+        
+      await getClientModel();
+      await getProductModel();
       const Schedule = await getScheduleModel();
       const schedule = await Schedule.findByIdAndDelete(req.params.id);
 
@@ -96,6 +113,9 @@ class ScheduleController {
 
   async updateStatus(req, res) {
     try {
+       
+      await getClientModel();
+      await getProductModel();
       const Schedule = await getScheduleModel();
       const schedule = await Schedule.findByIdAndUpdate(
         req.params.id,
@@ -136,6 +156,8 @@ class ScheduleController {
           details: errors.slice(0, 10) 
         });
       }
+        await getClientModel();
+      await getProductModel();
       const Schedule = await getScheduleModel();
       const created = await Schedule.insertMany(processedSchedules, { ordered: false });
 
@@ -216,6 +238,7 @@ class ScheduleController {
         continue;
       }
 
+      const Schedule = await getScheduleModel();
       const exists = await Schedule.exists({ vin: schedule.vin });
       if (!exists) {
         errors.push(`Linha ${i + 1}: Chassi ${schedule.vin} não encontrado`);
@@ -259,6 +282,7 @@ class ScheduleController {
     let successCount = 0;
     const updateErrors = [];
 
+     const Schedule = await getScheduleModel();
     // Usar bulkWrite para melhor performance
     const bulkOps = updates.map(({ vin, updateData }) => ({
       updateOne: {
@@ -268,6 +292,7 @@ class ScheduleController {
     }));
 
     try {
+
       const result = await Schedule.bulkWrite(bulkOps, { ordered: false });
       successCount = result.modifiedCount;
     } catch (error) {
