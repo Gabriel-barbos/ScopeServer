@@ -1,6 +1,6 @@
-const express = require("express");
+import express from "express";
+import axios from "axios";
 const router = express.Router();
-const axios = require("axios");
 
 // Credenciais Zoho
 const ZOHO_CLIENT_ID = "1000.Y90MMIV8G9CYW2LO1OFD6GWPUQODCE";
@@ -54,7 +54,6 @@ async function updateNumeroNota(recordId, numeroNota) {
   return response.data;
 }
 
-// GET /zoho/pedidos → lista pedidos pendentes
 router.get("/pedidos", async (req, res) => {
   try {
     const pedidos = await getPedidosEmissaoNF();
@@ -65,7 +64,6 @@ router.get("/pedidos", async (req, res) => {
   }
 });
 
-// PATCH /zoho/pedidos/:id → atualiza número da nota
 router.patch("/pedidos/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -79,4 +77,4 @@ router.patch("/pedidos/:id", async (req, res) => {
 });
 
 
-module.exports = router;
+export default router;

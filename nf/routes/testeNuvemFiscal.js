@@ -1,8 +1,8 @@
-const express = require("express");
+import express from "express";
+import { obterToken, CONFIG } from "../services/nuvemfiscal.js";
 const router = express.Router();
-const { obterToken, CONFIG } = require("../services/nuvemfiscal");
 
-// 🔹 Testa autenticação e retorna token
+//Testa autenticação e retorna token
 router.get("/token", async (req, res) => {
   try {
     console.log("🚀 Testando conexão com Nuvem Fiscal...");
@@ -11,7 +11,7 @@ router.get("/token", async (req, res) => {
 
     const token = await obterToken();
 
-    console.log("✅ Token obtido com sucesso!");
+    console.log(" Token obtido com sucesso!");
     res.json({
       sucesso: true,
       ambiente: CONFIG.AMBIENTE,
@@ -21,7 +21,7 @@ router.get("/token", async (req, res) => {
       mensagem: "Token obtido com sucesso"
     });
   } catch (erro) {
-    console.error("❌ Erro ao obter token:", erro.message);
+    console.error(" Erro ao obter token:", erro.message);
     res.status(500).json({
       sucesso: false,
       erro: erro.message
@@ -29,4 +29,4 @@ router.get("/token", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

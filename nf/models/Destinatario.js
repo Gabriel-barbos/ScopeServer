@@ -1,4 +1,5 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
+import { getNfDB } from "../../config/databases.js";
 
 const DestinatarioSchema = new mongoose.Schema({
   nome: { type: String, required: true },
@@ -27,4 +28,18 @@ const DestinatarioSchema = new mongoose.Schema({
   dataNascimento: { type: String, default: "" }
 }, { timestamps: true });
 
-module.exports = mongoose.model("Destinatario", DestinatarioSchema, "Destinatarios");
+let nfDB = null;
+let Destinatario = null;
+
+const getDestinatarioModel = async () => {
+  if (Destinatario) return Destinatario;
+  
+  if (!nfDB) {
+    nfDB = await getNfDB();
+  }
+  
+  Destinatario = nfDB.models.Destinatario || nfDB.model("Destinatario", DestinatarioSchema, "Destinatarios");
+  return Destinatario;
+};
+
+export default getDestinatarioModel;

@@ -1,32 +1,20 @@
-const express = require('express');
+import express from 'express';
+import * as notaController from '../controllers/nota.controller.js';
+import getNotaModel from '../models/Nota.js';
 const router = express.Router();
-const notaController = require('../controllers/nota.controller');
-const NotaFiscal = require('../models/Nota'); // ajuste o caminho se necessário
 
-/**
- * POST /api/notas/emitir
- * Emite NF-e e retorna PDF
- */
 router.post('/emitir', notaController.emitirNota);
 
-/**
- * GET /api/notas/historico
- * Lista todas notas emitidas
- */
+
 router.get('/historico', notaController.listarHistorico);
 
-/**
- * GET /api/notas/:eventoId/pdf
- * Busca PDF de nota específica
- */
+
 router.get('/:eventoId/pdf', notaController.buscarPDFNota);
 
-/**
- * GET /api/notas/ultima
- * Retorna a última nota emitida
- */
+
 router.get('/ultima', async (req, res) => {
   try {
+    const NotaFiscal = await getNotaModel();
     const ultimaNota = await NotaFiscal.findOne().sort({ numero: -1, createdAt: -1 });
 
     if (!ultimaNota) {
@@ -40,10 +28,7 @@ router.get('/ultima', async (req, res) => {
   }
 });
 
-/**
- * PUT /api/notas/ultima
- * Atualiza o número da última nota emitida
- */
+
 router.put('/ultima', async (req, res) => {
   try {
     const { novoNumero } = req.body;
@@ -52,6 +37,7 @@ router.put('/ultima', async (req, res) => {
       return res.status(400).json({ message: 'O novo número deve ser um número válido' });
     }
 
+    const NotaFiscal = await getNotaModel();
     const ultimaNota = await NotaFiscal.findOne().sort({ numero: -1, createdAt: -1 });
 
     if (!ultimaNota) {
@@ -71,4 +57,4 @@ router.put('/ultima', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

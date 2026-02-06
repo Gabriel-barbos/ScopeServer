@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
 const CONFIG = {
   CLIENT_ID: process.env.NUVEM_FISCAL_CLIENT_ID || "Ypw1yFRR2tCHqyrx5YVR",
@@ -157,9 +157,9 @@ async function buscarPDF(eventoId) {
   return await response.buffer();
 }
 
-module.exports = {
+export {
   emitirNFe,
   buscarPDF,
-  obterToken, // Exporta para testes
-  CONFIG // Exporta para verificação de ambiente
+  obterToken,
+  CONFIG
 };

@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 
 import jarvisApp from "./jarvis/index.js";
+import nfApp from "./nf/index.js";
 import { getJarvisDB, getNfDB, getSystemDB } from "./config/databases.js"
 
 dotenv.config();
@@ -29,9 +30,8 @@ app.use(express.json());
 })();
 
 app.use("/api/jarvis", jarvisApp);
-// futuramente:
-// app.use("/api/nf", nfApp);
-// app.use("/api/system", systemApp);
+app.use("/api/nf", nfApp)
+
 
 app.get("/api/health", (_, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });

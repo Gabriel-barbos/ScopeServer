@@ -1,6 +1,6 @@
-const { gerarNF } = require('../services/nf-builder-service');
-const { emitirNFe, buscarPDF } = require('../services/nuvemfiscal');
-const NotaFiscal = require('../models/Nota');
+import { gerarNF } from '../services/nf-builder-service.js';
+import { emitirNFe, buscarPDF } from '../services/nuvemfiscal.js';
+import getNotaModel from '../models/Nota.js';
 
 
 async function emitirNota(req, res) {
@@ -64,6 +64,7 @@ async function emitirNota(req, res) {
     // Salvar no banco após resposta
     setImmediate(async () => {
       try {
+        const NotaFiscal = await getNotaModel();
         await NotaFiscal.create({
           numero: resultado.numero,
           eventoId: resultado.eventoId,
@@ -71,7 +72,7 @@ async function emitirNota(req, res) {
           protocolo: resultado.protocolo,
           destinatario: jsonNF.infNFe.dest.xNome
         });
-        console.log("✅ Nota salva no banco");
+        console.log(" Nota salva no banco");
       } catch (err) {
         console.error("❌ Erro ao salvar nota:", err.message);
       }
@@ -87,9 +88,7 @@ async function emitirNota(req, res) {
   }
 }
 
-/**
- * Busca PDF de uma NF-e já autorizada
- */
+
 async function buscarPDFNota(req, res) {
   try {
     const { eventoId } = req.params;
@@ -121,11 +120,10 @@ async function buscarPDFNota(req, res) {
   }
 }
 
-/**
- * Lista histórico de notas emitidas
- */
+
 async function listarHistorico(req, res) {
   try {
+     const NotaFiscal = await getNotaModel();
     const notas = await NotaFiscal.find()
       .sort({ dataAutorizacao: -1 })
       .select('-__v');
@@ -146,7 +144,7 @@ async function listarHistorico(req, res) {
   }
 }
 
-module.exports = {
+export {
   emitirNota,
   buscarPDFNota,
   listarHistorico

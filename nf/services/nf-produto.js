@@ -1,8 +1,8 @@
-const {
+import {
   aplicarConversao,
   getDisplayValue,
   buscarProduto
-} = require('./utils');
+} from './utils.js';
 
 /**
  * @param {Object} pedido - Dados do pedido
@@ -123,4 +123,4 @@ function normalizarProdutos(pedido, destinatario, produtosCatalogo, defaults) {
   });
 }
 
-module.exports = { normalizarProdutos };
+export { normalizarProdutos };

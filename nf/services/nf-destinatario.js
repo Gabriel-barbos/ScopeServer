@@ -1,10 +1,10 @@
-const {
+import {
   padronizarCEP,
   padronizarCPF,
   padronizarCNPJ,
   obterCodigoIBGE,
   limparTextoNFe
-} = require('./utils');
+} from './utils.js';
 
 /**
  * @param {Object} d 
@@ -98,4 +98,4 @@ function montarDestinatario(d, defaults) {
   return destinatario;
 }
 
-module.exports = { montarDestinatario };
+export { montarDestinatario };

@@ -1,6 +1,6 @@
-const express = require("express");
+import express from "express";
+import getDestinatarioModel from "../models/Destinatario.js";
 const router = express.Router();
-const Destinatario = require("../models/Destinatario");
 
 // Função para limpar CPF/CNPJ/CEP
 const cleanNumber = (str) => (str ? str.replace(/\D/g, "") : "");
@@ -32,7 +32,7 @@ router.post("/", async (req, res) => {
       if (camposObrigatoriosPF.some(c => !c || c.trim() === "")) {
         return res.status(400).json({ error: "Campos obrigatórios para PF estão faltando" });
       }
-
+      const Destinatario = await getDestinatarioModel();
       const novoDest = new Destinatario({
         nome,
         cpf: cleanNumber(cpf),
@@ -102,11 +102,13 @@ router.get("/", async (req, res) => {
         ]
       };
       
+      const Destinatario = await getDestinatarioModel();
       const destinatarios = await Destinatario.find(query);
       return res.json(destinatarios);
     }
     
     // Busca geral (listar todos)
+    const Destinatario = await getDestinatarioModel();
     const destinatarios = await Destinatario.find();
     res.json(destinatarios);
   } catch (error) {
@@ -121,6 +123,7 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    const Destinatario = await getDestinatarioModel();
     const destinatario = await Destinatario.findById(id);
     if (!destinatario) return res.status(404).json({ error: "Destinatário não encontrado" });
     res.json(destinatario);
@@ -134,6 +137,7 @@ router.get("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    const Destinatario = await getDestinatarioModel();
     const deleted = await Destinatario.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ error: "Destinatário não encontrado" });
     res.json({ message: "Destinatário deletado com sucesso" });
@@ -155,6 +159,7 @@ router.patch("/:id", async (req, res) => {
     if (updateData.cep) updateData.cep = cleanNumber(updateData.cep);
 
     // Atualiza apenas os campos enviados
+    const Destinatario = await getDestinatarioModel();
     const updatedDest = await Destinatario.findByIdAndUpdate(id, updateData, {
       new: true, // retorna o documento atualizado
       runValidators: true
@@ -217,6 +222,7 @@ router.put("/:id", async (req, res) => {
       updateData.cpf = "";
     }
 
+    const Destinatario = await getDestinatarioModel();
     const updatedDest = await Destinatario.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true
@@ -231,4 +237,4 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

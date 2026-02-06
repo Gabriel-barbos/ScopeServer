@@ -1,8 +1,13 @@
-const fs = require("fs");
-const path = require("path");
-const { loadJSON, sanitizeFilename } = require("./utils");
-const { montarDestinatario } = require("./nf-destinatario");
-const { normalizarProdutos } = require("./nf-produto");
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { loadJSON, sanitizeFilename } from "./utils.js";
+import { montarDestinatario } from "./nf-destinatario.js";
+import { normalizarProdutos } from "./nf-produto.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const produtosCatalogo = loadJSON("../data/produtos.json");
 const defaults = loadJSON("../data/default.json");
@@ -156,4 +161,4 @@ function salvarArquivoTeste(nf, pedido) {
   }
 }
 
-module.exports = { gerarNF };
+export { gerarNF };

@@ -1,4 +1,5 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
+import { getNfDB } from "../../config/databases.js";
 
 const notaFiscalSchema = new mongoose.Schema({
   numero: {
@@ -26,4 +27,18 @@ const notaFiscalSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model('NotaFiscal', notaFiscalSchema);
+let nfDB = null;
+let NotaFiscal = null;
+
+const getNotaModel = async () => {
+  if (NotaFiscal) return NotaFiscal;
+  
+  if (!nfDB) {
+    nfDB = await getNfDB();
+  }
+  
+  NotaFiscal = nfDB.models.NotaFiscal || nfDB.model("NotaFiscal", notaFiscalSchema);
+  return NotaFiscal;
+};
+
+export default getNotaModel;
