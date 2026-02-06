@@ -241,6 +241,7 @@ class ScheduleController {
       plate: () => schedule.plate,
       serviceType: () => normalizeServiceType(schedule.serviceType),
       product: () => schedule.product,
+      orderNumber: () => schedule.orderNumber,
       notes: () => schedule.notes
     };
 

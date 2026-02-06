@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import productRoutes from "./routes/ProductRoutes.js";
-import clientRoutes from "./routes/clientRoutes.js";
+import clientRoutes from "./routes/ClientRoutes.js";
 import userController from "./controllers/UserController.js";
 import ServiceRoutes from "./routes/ServiceRoutes.js";
 import ReportRoutes from "./routes/ReportRoutes.js";
