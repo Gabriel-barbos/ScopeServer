@@ -1,3 +1,4 @@
+
 import mongoose from "mongoose";
 import { getSystemDB } from "../../config/databases.js";
 
@@ -14,10 +15,15 @@ const ClientSchema = new mongoose.Schema(
 let Client = null;
 
 const getClientModel = async () => {
-  if (Client) return Client;
+  if (Client) {
+    return Client;
+  }
   
   const systemDB = await getSystemDB();
+  
   Client = systemDB.models.Client || systemDB.model("Client", ClientSchema);
+  
+  
   return Client;
 };
 

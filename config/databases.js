@@ -1,6 +1,10 @@
+
 import mongoose from "mongoose";
 
 let connection;
+let jarvisDB;
+let nfDB;
+let systemDB;
 
 const connectMongo = async () => {
   if (!connection) {
@@ -17,16 +21,34 @@ const connectMongo = async () => {
 };
 
 export const getJarvisDB = async () => {
+  if (jarvisDB) return jarvisDB;
+  
   const conn = await connectMongo();
-  return conn.useDb("jarvis");
+  jarvisDB = conn.useDb("jarvis");
+  
+  console.log("🟢 JarvisDB inicializado");
+  return jarvisDB;
 };
 
 export const getNfDB = async () => {
+  if (nfDB) return nfDB;
+  
   const conn = await connectMongo();
-  return conn.useDb("nf");
+  nfDB = conn.useDb("nf");
+  
+  console.log("🟢 NfDB inicializado");
+  return nfDB;
 };
 
 export const getSystemDB = async () => {
+  if (systemDB) {
+    console.log("🟢 SystemDB já inicializado ");
+    return systemDB;
+  }
+  
   const conn = await connectMongo();
-  return conn.useDb("scopebr");
+  systemDB = conn.useDb("scopebr");
+  
+  console.log("🟢 SystemDB inicializado");
+  return systemDB;
 };

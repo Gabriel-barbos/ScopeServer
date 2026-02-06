@@ -1,3 +1,4 @@
+
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import { getSystemDB } from "../../config/databases.js";
@@ -22,10 +23,15 @@ userSchema.pre("save", async function () {
 let User = null;
 
 const getUserModel = async () => {
-  if (User) return User;
+  if (User) {
+    return User;
+  }
   
   const systemDB = await getSystemDB();
+  
   User = systemDB.models.User || systemDB.model("User", userSchema);
+  
+  
   return User;
 };
 

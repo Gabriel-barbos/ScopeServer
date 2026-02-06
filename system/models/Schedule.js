@@ -1,3 +1,4 @@
+
 import mongoose from "mongoose";
 import { getSystemDB } from "../../config/databases.js";
 
@@ -36,10 +37,15 @@ const ScheduleSchema = new mongoose.Schema(
 let Schedule = null;
 
 const getScheduleModel = async () => {
-  if (Schedule) return Schedule;
+  if (Schedule) {
+    return Schedule;
+  }
   
   const systemDB = await getSystemDB();
+  
   Schedule = systemDB.models.Schedule || systemDB.model("Schedule", ScheduleSchema);
+  
+  
   return Schedule;
 };
 

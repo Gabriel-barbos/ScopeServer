@@ -1,4 +1,4 @@
-// system/controllers/ScheduleController.js
+// system/controllers/ScheduleController.js - VERSÃO CORRIGIDA
 
 import getScheduleModel from "../models/Schedule.js";
 import getClientModel from "../models/Client.js";
@@ -27,9 +27,9 @@ class ScheduleController {
   
   async create(req, res) {
     try {
-      // Garante que Client e Product existem antes
-      await getClientModel();
-      await getProductModel();
+      // ✅ ORDEM CORRETA: Client e Product PRIMEIRO
+      const Client = await getClientModel();
+      const Product = await getProductModel();
       const Schedule = await getScheduleModel();
       
       const schedule = await Schedule.create(req.body);
@@ -41,28 +41,31 @@ class ScheduleController {
 
   async list(req, res) {
     try {
-      // Garante que Client e Product existem antes
-      await getClientModel();
-      await getProductModel();
+      // ✅ CRÍTICO: Retornar os models (não só await)
+      const Client = await getClientModel();
+      const Product = await getProductModel();
       const Schedule = await getScheduleModel();
       
-      console.log("Models registrados:", Object.keys(Schedule.db.models));
+      // Debug: verificar se estão na mesma conexão
+      const db = Schedule.db;
+      console.log("✅ Models registrados no DB:", Object.keys(db.models));
       
       const schedules = await Schedule.find()
         .populate("client", "name image")
         .populate("product", "name")
         .sort({ scheduledDate: 1 });
+      
       res.json(schedules);
     } catch (error) {
-      console.error("ERRO COMPLETO:", error);
+      console.error("❌ ERRO COMPLETO:", error);
       handleError(res, error);
     }
   }
 
   async findById(req, res) {
     try {
-      await getClientModel();
-      await getProductModel();
+      const Client = await getClientModel();
+      const Product = await getProductModel();
       const Schedule = await getScheduleModel();
       
       const schedule = await Schedule.findById(req.params.id)
@@ -80,8 +83,8 @@ class ScheduleController {
 
   async update(req, res) {
     try {
-      await getClientModel();
-      await getProductModel();
+      const Client = await getClientModel();
+      const Product = await getProductModel();
       const Schedule = await getScheduleModel();
       
       const schedule = await Schedule.findByIdAndUpdate(
@@ -101,8 +104,8 @@ class ScheduleController {
 
   async delete(req, res) {
     try {
-      await getClientModel();
-      await getProductModel();
+      const Client = await getClientModel();
+      const Product = await getProductModel();
       const Schedule = await getScheduleModel();
       
       const schedule = await Schedule.findByIdAndDelete(req.params.id);
@@ -118,8 +121,8 @@ class ScheduleController {
 
   async updateStatus(req, res) {
     try {
-      await getClientModel();
-      await getProductModel();
+      const Client = await getClientModel();
+      const Product = await getProductModel();
       const Schedule = await getScheduleModel();
       
       const schedule = await Schedule.findByIdAndUpdate(
@@ -161,8 +164,8 @@ class ScheduleController {
         });
       }
 
-      await getClientModel();
-      await getProductModel();
+      const Client = await getClientModel();
+      const Product = await getProductModel();
       const Schedule = await getScheduleModel();
       
       const created = await Schedule.insertMany(processedSchedules, { ordered: false });
@@ -212,7 +215,7 @@ class ScheduleController {
     }
   }
 
-  // Resto do código permanece igual...
+  // Métodos privados
   #validateSchedule(schedule, idx) {
     const errors = [];
     const requiredFields = ['vin', 'model', 'serviceType', 'client'];
@@ -236,6 +239,8 @@ class ScheduleController {
     const errors = [];
     const updates = [];
 
+    const Schedule = await getScheduleModel();
+
     for (let i = 0; i < schedules.length; i++) {
       const schedule = schedules[i];
 
@@ -244,7 +249,6 @@ class ScheduleController {
         continue;
       }
 
-      const Schedule = await getScheduleModel();
       const exists = await Schedule.exists({ vin: schedule.vin });
       if (!exists) {
         errors.push(`Linha ${i + 1}: Chassi ${schedule.vin} não encontrado`);
