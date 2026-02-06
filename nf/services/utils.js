@@ -51,6 +51,8 @@ const produtoMap = {
   "Teltonika FMC150": ["TELTONIKA FMC150"],
   "Teltonika FMC150 + eCAM02": ["TELTONIKA FMC150", "ECAN02HWL301"],
   "X3Tech XT40": ["RASTREADOR XT40 - X3TECH"],
+  "X3Tech sem bloqueio": ["RASTREADOR XT40 - X3TECH"],
+
   "MHUB 369": ["MHUB 369"],
   // Acessórios
   "I-Button": ["I-BUTTON PRETO"],
