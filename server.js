@@ -22,8 +22,9 @@ app.use(express.json());
       getSystemDB(),
     ]);
 
+    const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
-      console.log(`Mongo acionado ${PORT}`);
+      console.log(`API Central rodando na porta ${PORT}`);
     });
   } catch (err) {
     console.error("Erro ao conectar Mongo:", err);
@@ -39,7 +40,3 @@ app.get("/api/health", (_, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`API Central rodando na porta ${PORT}`);
-});

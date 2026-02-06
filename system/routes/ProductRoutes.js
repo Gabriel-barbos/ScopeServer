@@ -22,7 +22,8 @@ router.post('/', upload.array('image', 5), async (req, res) => {
   try {
     const imageUrls = req.files.map(file => file.path);
 
-    const product = new Product({
+    const Product = await getProductModel(); 
+    const product = new Product({            
       name: req.body.name,
       description: req.body.description,
       price: req.body.price,
@@ -30,7 +31,6 @@ router.post('/', upload.array('image', 5), async (req, res) => {
       category: req.body.category,
     });
 
-    const Product = await getProductModel();
     const savedProduct = await product.save();
     res.status(201).json(savedProduct);
   } catch (error) {
