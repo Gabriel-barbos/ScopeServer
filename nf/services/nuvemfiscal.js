@@ -1,20 +1,20 @@
-import fetch from 'node-fetch';
+import fetch from "node-fetch";
 
 const CONFIG = {
-  CLIENT_ID: process.env.NUVEM_FISCAL_CLIENT_ID || "Ypw1yFRR2tCHqyrx5YVR",
-  CLIENT_SECRET: process.env.NUVEM_FISCAL_CLIENT_SECRET || "N6wyZStdtvQceilcNqYOfsTvVgUhC4cjqS8ueGz9",
+  CLIENT_ID: process.env.NUVEM_FISCAL_CLIENT_ID,
+  CLIENT_SECRET: process.env.NUVEM_FISCAL_CLIENT_SECRET,
   AMBIENTE: process.env.NUVEM_FISCAL_AMBIENTE || "sandbox",
-  
+
   get AUTH_URL() {
     return "https://auth.nuvemfiscal.com.br/oauth/token";
   },
-  
+
   get API_URL() {
     return this.AMBIENTE === "sandbox"
       ? "https://api.sandbox.nuvemfiscal.com.br/nfe"
       : "https://api.nuvemfiscal.com.br/nfe";
   },
-  
+
   get PDF_URL() {
     return this.AMBIENTE === "sandbox"
       ? "https://api.sandbox.nuvemfiscal.com.br/nfe/eventos"
@@ -22,15 +22,15 @@ const CONFIG = {
   }
 };
 
+// Falha rápida em produção
+if (!CONFIG.CLIENT_ID || !CONFIG.CLIENT_SECRET) {
+  throw new Error("❌ Nuvem Fiscal: CLIENT_ID ou CLIENT_SECRET não configurados no ambiente");
+}
+
 let tokenCache = null;
 let tokenExpiry = null;
 
-/**
- * Obtém token de autenticação da Nuvem Fiscal
- * @returns {Promise<string>} Access token
- */
 async function obterToken() {
-  // Verifica se token ainda é válido (margem de 5 min)
   if (tokenCache && tokenExpiry && Date.now() < tokenExpiry - 300000) {
     return tokenCache;
   }
@@ -48,55 +48,54 @@ async function obterToken() {
     body: params
   });
 
+  const rawBody = await response.text();
+
   if (!response.ok) {
-    const errorData = await response.text();
-    throw new Error(`Erro ao obter token Nuvem Fiscal: ${response.status} - ${errorData}`);
+    throw new Error(`Erro ao obter token Nuvem Fiscal (${response.status}): ${rawBody}`);
   }
 
-  const data = await response.json();
+  const data = JSON.parse(rawBody);
+
   tokenCache = data.access_token;
-  tokenExpiry = Date.now() + (data.expires_in * 1000); // Converte segundos para ms
-  
+  tokenExpiry = Date.now() + data.expires_in * 1000;
+
   console.log(`🔑 Token Nuvem Fiscal obtido (expira em ${data.expires_in}s)`);
   return tokenCache;
 }
 
-/**
- * Emite NF-e na Nuvem Fiscal
- * @param {Object} jsonNF - JSON da NF-e no formato da API
- * @returns {Promise<Object>} Resposta da API com chave, protocolo, etc.
- */
 async function emitirNFe(jsonNF) {
   const token = await obterToken();
-  
-  console.log(`📤 Enviando NF-e para Nuvem Fiscal (${CONFIG.AMBIENTE})...`);
+
+  console.log(`📤 Enviando NF-e (${CONFIG.AMBIENTE})`);
   console.log(`   Número: ${jsonNF.infNFe.ide.nNF}`);
 
   const response = await fetch(CONFIG.API_URL, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify(jsonNF)
   });
 
-  const responseData = await response.json();
+  const contentType = response.headers.get("content-type");
+  const rawBody = await response.text();
 
   if (!response.ok) {
-    console.error("❌ Erro na emissão:", responseData);
-    throw new Error(`Erro Nuvem Fiscal ${response.status}: ${JSON.stringify(responseData)}`);
+    console.error("❌ Erro Nuvem Fiscal:", rawBody);
+    throw new Error(`Erro Nuvem Fiscal ${response.status}: ${rawBody}`);
   }
 
-  console.log("✅ NF-e enviada com sucesso!");
+  if (!contentType?.includes("application/json")) {
+    throw new Error("Resposta inesperada da Nuvem Fiscal: " + rawBody);
+  }
+
+  const responseData = JSON.parse(rawBody);
+
+  console.log("✅ NF-e enviada com sucesso");
   return analisarRespostaNF(responseData);
 }
 
-/**
- * Analisa resposta da API e retorna estrutura padronizada
- * @param {Object} responseApi - Resposta da Nuvem Fiscal
- * @returns {Object} Resultado padronizado
- */
 function analisarRespostaNF(responseApi) {
   const { status, numero, chave, autorizacao } = responseApi;
 
@@ -112,7 +111,7 @@ function analisarRespostaNF(responseApi) {
       dataAutorizacao: autorizacao.data_evento || new Date().toISOString()
     };
   }
-  
+
   if (status === "rejeitado" || autorizacao?.status === "rejeitado") {
     return {
       sucesso: false,
@@ -123,7 +122,7 @@ function analisarRespostaNF(responseApi) {
       motivoErro: autorizacao?.motivo_status
     };
   }
-  
+
   return {
     sucesso: false,
     status: status || "desconhecido",
@@ -133,25 +132,18 @@ function analisarRespostaNF(responseApi) {
   };
 }
 
-/**
- * Busca PDF da NF-e autorizada
- * @param {string} eventoId - ID do evento retornado pela API
- * @returns {Promise<Buffer>} Buffer do PDF
- */
 async function buscarPDF(eventoId) {
   const token = await obterToken();
-  
-  console.log(`📄 Buscando PDF do evento: ${eventoId}`);
 
   const response = await fetch(`${CONFIG.PDF_URL}/${eventoId}/pdf`, {
-    method: "GET",
     headers: {
-      "Authorization": `Bearer ${token}`
+      Authorization: `Bearer ${token}`
     }
   });
 
   if (!response.ok) {
-    throw new Error(`Erro ao buscar PDF: ${response.status}`);
+    const text = await response.text();
+    throw new Error(`Erro ao buscar PDF (${response.status}): ${text}`);
   }
 
   return await response.buffer();
