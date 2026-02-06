@@ -1,9 +1,10 @@
-const express = require('express');
+import express from 'express';
+import multer from 'multer';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import cloudinary from '../config/cloudinary.js';
+import getProductModel from '../models/Product.js';
+
 const router = express.Router();
-const Product = require('../models/Product');
-const multer = require('multer');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const cloudinary = require('../config/cloudinary'); 
 
 // Configuração do multer com Cloudinary para produtos
 const storage = new CloudinaryStorage({
@@ -29,6 +30,7 @@ router.post('/', upload.array('image', 5), async (req, res) => {
       category: req.body.category,
     });
 
+    const Product = await getProductModel();
     const savedProduct = await product.save();
     res.status(201).json(savedProduct);
   } catch (error) {
@@ -39,6 +41,7 @@ router.post('/', upload.array('image', 5), async (req, res) => {
 // Listar todos os Produtos
 router.get('/', async (req, res) => {
   try {
+    const Product = await getProductModel();
     const products = await Product.find();
     res.json(products);
   } catch (error) {
@@ -49,6 +52,7 @@ router.get('/', async (req, res) => {
 // Obter um Produto por ID
 router.get('/:id', async (req, res) => {
   try {
+    const Product = await getProductModel();
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ error: 'Produto não encontrado' });
     res.json(product);
@@ -58,6 +62,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Atualizar um Produto
+
 router.put('/:id', upload.array('image', 5), async (req, res) => {
   try {
     const updatedData = {
@@ -72,6 +77,7 @@ router.put('/:id', upload.array('image', 5), async (req, res) => {
       updatedData.image = imageUrls;
     }
 
+    const Product = await getProductModel();
     const updatedProduct = await Product.findByIdAndUpdate(req.params.id, updatedData, { new: true });
     if (!updatedProduct) return res.status(404).json({ error: 'Produto não encontrado' });
     res.json(updatedProduct);
@@ -83,6 +89,7 @@ router.put('/:id', upload.array('image', 5), async (req, res) => {
 // Excluir um Produto
 router.delete('/:id', async (req, res) => {
   try {
+    const Product = await getProductModel();
     const deletedProduct = await Product.findByIdAndDelete(req.params.id);
     if (!deletedProduct) return res.status(404).json({ error: 'Produto não encontrado' });
     res.json({ message: 'Produto excluído com sucesso!' });
@@ -91,4 +98,4 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

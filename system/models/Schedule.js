@@ -1,4 +1,5 @@
   import mongoose from "mongoose";
+  import { getSystemDB } from "../../config/databases.js";
 
   const ScheduleSchema = new mongoose.Schema(
     {
@@ -10,6 +11,7 @@
       notes: { type: String },
       createdBy: { type: String },
       provider : {type: String, required: false },
+      orderNumber : {type: String, required: false },
       product: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Product",
@@ -35,4 +37,18 @@
     },
     { timestamps: true }
   );
-  export default mongoose.model("Schedule", ScheduleSchema);
+    let systemDB = null;
+    let Schedule = null;
+
+    const getScheduleModel = async () => {
+      if (Schedule) return Schedule;
+      
+      if (!systemDB) {
+        systemDB = await getSystemDB();
+      }
+      
+      Schedule = systemDB.models.Schedule || systemDB.model("Schedule", ScheduleSchema);
+      return Schedule;
+    };
+
+    export default getScheduleModel;

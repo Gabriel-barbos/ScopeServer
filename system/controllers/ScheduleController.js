@@ -1,4 +1,4 @@
-import Schedule from "../models/Schedule.js";
+import getScheduleModel from "../models/Schedule.js";
 import {
   normalizeServiceType,
   normalizeStatus,
@@ -25,6 +25,7 @@ class ScheduleController {
   // CRUD Básico
   async create(req, res) {
     try {
+      const Schedule = await getScheduleModel();
       const schedule = await Schedule.create(req.body);
       res.status(201).json(schedule);
     } catch (error) {
@@ -34,6 +35,7 @@ class ScheduleController {
 
   async list(req, res) {
     try {
+      const Schedule = await getScheduleModel();
       const schedules = await Schedule.find()
         .populate("client", "name image")
         .populate("product", "name")
@@ -46,6 +48,7 @@ class ScheduleController {
 
   async findById(req, res) {
     try {
+      const Schedule = await getScheduleModel();
       const schedule = await Schedule.findById(req.params.id)
         .populate("client")
         .populate("product");
@@ -61,6 +64,7 @@ class ScheduleController {
 
   async update(req, res) {
     try {
+      const Schedule = await getScheduleModel();
       const schedule = await Schedule.findByIdAndUpdate(
         req.params.id,
         req.body,
@@ -78,6 +82,7 @@ class ScheduleController {
 
   async delete(req, res) {
     try {
+      const Schedule = await getScheduleModel();
       const schedule = await Schedule.findByIdAndDelete(req.params.id);
 
       if (!schedule) {
@@ -91,6 +96,7 @@ class ScheduleController {
 
   async updateStatus(req, res) {
     try {
+      const Schedule = await getScheduleModel();
       const schedule = await Schedule.findByIdAndUpdate(
         req.params.id,
         { status: req.body.status },
@@ -130,7 +136,7 @@ class ScheduleController {
           details: errors.slice(0, 10) 
         });
       }
-
+      const Schedule = await getScheduleModel();
       const created = await Schedule.insertMany(processedSchedules, { ordered: false });
 
       res.status(201).json({

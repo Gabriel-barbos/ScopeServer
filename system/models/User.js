@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import { getSystemDB } from "../../config/databases.js";
 
 const userSchema = new mongoose.Schema({
   name: String,
@@ -19,4 +20,18 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-export default mongoose.model("User", userSchema);
+let systemDB = null;
+let User = null;
+
+const getUserModel = async () => {
+  if (User) return User;
+  
+  if (!systemDB) {
+    systemDB = await getSystemDB();
+  }
+  
+  User = systemDB.models.User || systemDB.model("User", userSchema);
+  return User;
+};
+
+export default getUserModel;

@@ -1,7 +1,7 @@
-import Service from "../models/Service.js";
-import Schedule from "../models/Schedule.js";
-import Client from "../models/Client.js";
-import Product from "../models/Product.js";
+import getServiceModel from "../models/Service.js";
+import getScheduleModel from "../models/Schedule.js";
+import getClientModel from "../models/Client.js";
+import getProductModel from "../models/Product.js";
 
 class ServiceController {
 
@@ -20,6 +20,10 @@ class ServiceController {
     try {
       const { scheduleId, validationData } = req.body;
 
+      const Service = await getServiceModel();
+      const Schedule = await getScheduleModel();
+      const Client = await getClientModel();
+      const Product = await getProductModel();
       const schedule = await Schedule.findById(scheduleId)
         .populate("client")
         .populate("product");
@@ -56,7 +60,7 @@ class ServiceController {
         schedule: scheduleId,
         source: "validation"
       });
-
+      
       await Schedule.findByIdAndUpdate(scheduleId, {
         status: "concluido",
         service: service._id
@@ -71,6 +75,10 @@ class ServiceController {
   // Criar serviço direto 
   async create(req, res) {
     try {
+        const Service = await getServiceModel();
+      const Schedule = await getScheduleModel();
+      const Client = await getClientModel();
+      const Product = await getProductModel();
       const service = await Service.create({
         ...req.body,
         source: "import",
@@ -137,7 +145,7 @@ class ServiceController {
           errors.push(`Linha ${lineNum}: Tipo de serviço inválido`);
           continue;
         }
-
+        
         processedServices.push({
           plate: service.plate,
           vin: service.vin,
@@ -171,6 +179,10 @@ class ServiceController {
       }
 
       // Inserir serviços
+      const Service = await getServiceModel();
+      const Schedule = await getScheduleModel();
+      const Client = await getClientModel();
+      const Product = await getProductModel();
       const created = await Service.insertMany(processedServices, { ordered: false });
 
       return res.status(201).json({
@@ -193,6 +205,10 @@ class ServiceController {
   // Listar serviços
   async list(req, res) {
     try {
+      const Service = await getServiceModel();
+      const Schedule = await getScheduleModel();
+      const Client = await getClientModel();
+      const Product = await getProductModel();
       const services = await Service.find()
         .populate("client", "name image")
         .populate("product", "name")
@@ -207,6 +223,10 @@ class ServiceController {
   // Buscar por ID
   async findById(req, res) {
     try {
+      const Service = await getServiceModel();
+      const Schedule = await getScheduleModel();
+      const Client = await getClientModel();
+      const Product = await getProductModel();
       const service = await Service.findById(req.params.id)
         .populate("client")
         .populate("product")
@@ -227,7 +247,11 @@ class ServiceController {
     try {
       const forbiddenFields = ["schedule", "source", "validatedAt"];
       forbiddenFields.forEach(field => delete req.body[field]);
-
+      
+      const Service = await getServiceModel();
+      const Schedule = await getScheduleModel();
+      const Client = await getClientModel();
+      const Product = await getProductModel();
       const service = await Service.findByIdAndUpdate(
         req.params.id,
         req.body,
@@ -247,6 +271,10 @@ class ServiceController {
   // Excluir serviço
   async remove(req, res) {
     try {
+      const Service = await getServiceModel();
+      const Schedule = await getScheduleModel();
+      const Client = await getClientModel();
+      const Product = await getProductModel();
       const service = await Service.findByIdAndDelete(req.params.id);
 
       if (!service) {

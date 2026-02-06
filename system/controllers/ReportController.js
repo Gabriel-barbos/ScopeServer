@@ -1,5 +1,5 @@
-import Schedule from "../models/Schedule.js";
-import Service from "../models/Service.js";
+import getScheduleModel from "../models/Schedule.js";
+import getServiceModel from "../models/Service.js";
 import ExcelJS from "exceljs";
 import mongoose from "mongoose";
 
@@ -53,12 +53,12 @@ function addClientFilter(match, clientId) {
         servicesByClient,
         reportDaily,
       ] = await Promise.all([
-        this.#servicesByType(matchWithClient),        // ✅ CORRIGIDO
+        this.#servicesByType(matchWithClient),       
         this.#schedulesByStatus(matchWithClient),
         this.#pendingByClient(dateFilter, clientId),
         this.#pendingByProvider(dateFilter, clientId),
-        this.#evolutionByMonth(),                     // ✅ CORRIGIDO
-        this.#evolutionByDay(),                       // ✅ CORRIGIDO
+        this.#evolutionByMonth(),                    
+        this.#evolutionByDay(),                       
         this.#servicesByClient(),
         this.#reportDaily(startDate, endDate),
       ]);
@@ -80,8 +80,9 @@ function addClientFilter(match, clientId) {
   }
 
 
-  // ✅ CORRIGIDO - Agora usa Service ao invés de Schedule
   async #servicesByType(match) {
+    const Service = await getServiceModel();
+    const Schedule = await getScheduleModel();
     const result = await Service.aggregate([
       { $match: match },
       { $group: { _id: "$serviceType", count: { $sum: 1 } } },
@@ -94,8 +95,9 @@ function addClientFilter(match, clientId) {
     };
   }
 
-  // ✅ Permanece Schedule (métricas de agendamento)
   async #schedulesByStatus(match) {
+    const Service = await getServiceModel();
+    const Schedule = await getScheduleModel();
     const result = await Schedule.aggregate([
       { $match: match },
       { $group: { _id: "$status", count: { $sum: 1 } } },
@@ -111,7 +113,6 @@ function addClientFilter(match, clientId) {
     };
   }
 
-  // ✅ Permanece Schedule (agendamentos pendentes)
   async #pendingByClient(dateFilter, clientId) {
     const match = {
       ...dateFilter,
@@ -121,6 +122,8 @@ function addClientFilter(match, clientId) {
     const objectId = toObjectId(clientId);
     if (objectId) match.client = objectId;
 
+    const Service = await getServiceModel();
+    const Schedule = await getScheduleModel();
     const result = await Schedule.aggregate([
       { $match: match },
       {
@@ -156,7 +159,6 @@ function addClientFilter(match, clientId) {
     }));
   }
 
-  // ✅ Permanece Schedule (agendamentos pendentes por prestador)
   async #pendingByProvider(dateFilter, clientId) {
     const match = {
       ...dateFilter,
@@ -167,6 +169,8 @@ function addClientFilter(match, clientId) {
     const objectId = toObjectId(clientId);
     if (objectId) match.client = objectId;
 
+    const Service = await getServiceModel();
+    const Schedule = await getScheduleModel();
     const result = await Schedule.aggregate([
       { $match: match },
       { $group: { _id: "$provider", count: { $sum: 1 } } },
@@ -176,8 +180,9 @@ function addClientFilter(match, clientId) {
     return result.map(({ _id, count }) => ({ provider: _id, pending: count }));
   }
 
-  // ✅ CORRIGIDO - Usa Service e data de criação do serviço
   async #evolutionByMonth() {
+    const Service = await getServiceModel();
+    const Schedule = await getScheduleModel();
     const result = await Service.aggregate([
       {
         $group: {
@@ -211,8 +216,9 @@ function addClientFilter(match, clientId) {
     }));
   }
 
-  // ✅ CORRIGIDO - Usa Service e data de criação do serviço
   async #evolutionByDay() {
+    const Service = await getServiceModel();
+    const Schedule = await getScheduleModel();
     const result = await Service.aggregate([
       {
         $group: {
@@ -258,8 +264,9 @@ function addClientFilter(match, clientId) {
     return months;
   }
 
-  // ✅ Permanece Service (correto)
   async #servicesByClient() {
+    const Service = await getServiceModel();
+    const Schedule = await getScheduleModel();
     const result = await Service.aggregate([
       {
         $lookup: {
@@ -277,7 +284,6 @@ function addClientFilter(match, clientId) {
     return result.map(({ _id, count }) => ({ client: _id, total: count }));
   }
 
-  // ✅ Permanece Service (correto)
   async #reportDaily(startDate, endDate) {
     let start, end;
     if (startDate && endDate) {
@@ -289,7 +295,10 @@ function addClientFilter(match, clientId) {
       end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
     }
 
+    const Service = await getServiceModel();
+    const Schedule = await getScheduleModel();
     const result = await Service.aggregate([
+
       { $match: { createdAt: { $gte: start, $lte: end } } },
       {
         $lookup: {
@@ -342,7 +351,7 @@ function addClientFilter(match, clientId) {
     };
   }
 
-  // --- Export Excel ---
+  //Export Excel
 
   // GET /api/reports/export?type=schedules|services
   exportData = async (req, res) => {
@@ -371,6 +380,8 @@ function addClientFilter(match, clientId) {
   }
 
   async #exportSchedules(workbook) {
+    const Service = await getServiceModel();
+    const Schedule = await getScheduleModel();
     const schedules = await Schedule.find()
       .populate("client", "name")
       .populate("product", "name")
@@ -413,6 +424,8 @@ function addClientFilter(match, clientId) {
   }
 
   async #exportServices(workbook) {
+    const Service = await getServiceModel();
+    const Schedule = await getScheduleModel();
     const services = await Service.find()
       .populate("client", "name")
       .populate("product", "name")

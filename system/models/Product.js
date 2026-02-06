@@ -1,4 +1,5 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
+import { getSystemDB } from "../../config/databases.js";
 
 const productSchema = new mongoose.Schema(
   {
@@ -10,4 +11,18 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Product", productSchema);
+let systemDB = null;
+let Product = null;
+
+const getProductModel = async () => {
+  if (Product) return Product;
+  
+  if (!systemDB) {
+    systemDB = await getSystemDB();
+  }
+  
+  Product = systemDB.models.Product || systemDB.model("Product", productSchema);
+  return Product;
+};
+
+export default getProductModel;

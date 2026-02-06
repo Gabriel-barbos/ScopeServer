@@ -1,14 +1,15 @@
-const express = require('express');
+import express from 'express';
+import getClientModel from '../models/Client.js';
+import upload from '../config/multer.js';
+
 const router = express.Router();
-const Client = require('../models/Client');
-const upload = require('../config/multer');
 
 // Criar cliente
 router.post('/', upload.array('image', 1), async (req, res) => { 
     try {
 
       const imageUrls = req.files.map(file => file.path);
-  
+      const Client = await getClientModel();
       const client = new Client({
         name: req.body.name,
         description: req.body.description,
@@ -26,6 +27,7 @@ router.post('/', upload.array('image', 1), async (req, res) => {
   // Listar todos os Clients
 router.get('/', async (req, res) => {
     try {
+      const Client = await getClientModel();
       const clients = await Client.find();
       res.json(clients);
     } catch (error) {
@@ -37,6 +39,7 @@ router.get('/', async (req, res) => {
   // Obter um Client por ID
 router.get('/:id', async (req, res) => {
     try {
+      const Client = await getClientModel();
       const client = await Client.findById(req.params.id);
       if (!client) return res.status(404).json({ error: 'Cliente não encontrado' });
       res.json(client);
@@ -61,6 +64,7 @@ router.put('/:id', upload.array('image', 5), async (req, res) => {
         updatedData.image = imageUrls;
       }
   
+      const Client = await getClientModel();
       const updatedClient = await Client.findByIdAndUpdate(req.params.id, updatedData, { new: true });
       if (!updatedClient) return res.status(404).json({ error: 'Cliente não encontrado' });
       res.json(updatedClient);
@@ -72,6 +76,7 @@ router.put('/:id', upload.array('image', 5), async (req, res) => {
   // Excluir um Client
 router.delete('/:id', async (req, res) => {
     try {
+      const Client = await getClientModel();
       const deletedClient = await Client.findByIdAndDelete(req.params.id);
       if (!deletedClient) return res.status(404).json({ error: 'Client não encontrado' });
       res.json({ message: 'Cliente excluído com sucesso!' });
@@ -80,4 +85,4 @@ router.delete('/:id', async (req, res) => {
     }
   });
   
-  module.exports = router;
+export default router;

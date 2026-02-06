@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { getSystemDB } from "../db.js";
+import { getSystemDB } from "../../config/databases.js";
 
 const ClientSchema = new mongoose.Schema(
   {
@@ -11,12 +11,18 @@ const ClientSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default () => {
-  const conn = getSystemDB();
+let systemDB = null;
+let Client = null;
 
-  if (!conn.models.Client) {
-    conn.model("Client", ClientSchema);
+const getClientModel = async () => {
+  if (Client) return Client;
+  
+  if (!systemDB) {
+    systemDB = await getSystemDB();
   }
-
-  return conn.models.Client;
+  
+  Client = systemDB.models.Client || systemDB.model("Client", ClientSchema);
+  return Client;
 };
+
+export default getClientModel;

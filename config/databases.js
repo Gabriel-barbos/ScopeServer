@@ -28,5 +28,5 @@ export const getNfDB = async () => {
 
 export const getSystemDB = async () => {
   const conn = await connectMongo();
-  return conn.useDb("system");
+  return conn.useDb("scopebr");
 };

@@ -1,5 +1,5 @@
 import express from "express";
-import User from "../models/User.js";
+import getUserModel from "../models/User.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { protect, admin } from "../middleware/auth.js";
@@ -13,6 +13,7 @@ const generateToken = (id) =>
 router.post("/", async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
+    const User = await getUserModel();
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: "Usuário já existe" });
 
@@ -27,6 +28,7 @@ router.post("/", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
+    const User = await getUserModel();
     const user = await User.findOne({ email });
     if (!user || !(await bcrypt.compare(password, user.password)))
       return res.status(401).json({ message: "Login ou senha inválidos" });
@@ -42,12 +44,14 @@ router.post("/login", async (req, res) => {
 
 // Get all users 
 router.get("/", async (req, res) => {
+  const User = await getUserModel();
   const users = await User.find().select("-password");
   res.json(users);
 });
 
 // Get single user 
 router.get("/:id", async (req, res) => {
+  const User = await getUserModel();
   const user = await User.findById(req.params.id).select("-password");
   if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
   res.json(user);
@@ -58,6 +62,7 @@ router.put("/:id", async (req, res) => {
   try {
     const { name, email, role, password } = req.body;
     
+    const User = await getUserModel();
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
 
@@ -86,6 +91,7 @@ router.put("/:id", async (req, res) => {
 // Delete user 
 router.delete("/:id", async (req, res) => {
   try {
+    const User = await getUserModel();
     const user = await User.findByIdAndDelete(req.params.id);
     if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
     res.json({ message: "Usuário removido" });
