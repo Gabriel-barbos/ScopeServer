@@ -317,6 +317,7 @@ class ServiceController {
       return cache.get(clientInput);
     }
 
+      const Client = await getClientModel();
     // Tenta como ObjectId primeiro
     try {
       const client = await Client.findById(clientInput);
@@ -347,6 +348,7 @@ class ServiceController {
       return cache.get(productInput);
     }
 
+     const Product = await getProductModel();
     // Tenta como ObjectId
     try {
       const product = await Product.findById(productInput);
