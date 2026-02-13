@@ -190,7 +190,7 @@ class ServiceController {
     }
   }
 
-  //list com filtros de vin, plate, deviceId, status, serviceType e client, com paginação
+  // ─── LIST com paginação e busca ───────────────────────────────────────────
 
   async list(req, res) {
     try {
@@ -206,7 +206,7 @@ class ServiceController {
 
       const [data, total] = await Promise.all([
         Service.find(filter)
-          .populate("client", "name")
+          .populate("client", "name image")
           .populate("product", "name")
           .sort({ createdAt: -1 })
           .skip(skip)
@@ -230,7 +230,7 @@ class ServiceController {
     }
   }
 
-
+  // ─────────────────────────────────────────────────────────────────────────
 
   async findById(req, res) {
     try {
@@ -294,7 +294,7 @@ class ServiceController {
     }
   }
 
-  //helpers
+  // ─── Helpers privados ─────────────────────────────────────────────────────
 
   #buildFilter(query) {
     const filter = {};
