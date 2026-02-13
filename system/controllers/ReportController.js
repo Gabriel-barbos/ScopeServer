@@ -11,7 +11,7 @@ import {
   reportDaily,
 } from "../services/reportAggregations.js";
 
-import { generateExcelExport } from "../services/reportExport.js";
+import { streamExcelExport } from "../services/reportExport.js";
 
 class ReportController {
   // GET /api/reports
@@ -62,7 +62,6 @@ class ReportController {
     try {
       const { type, includeOldData, dateFrom, dateTo } = req.body;
 
-      // Validação
       if (!["schedules", "services"].includes(type)) {
         return res
           .status(400)
@@ -75,19 +74,12 @@ class ReportController {
           .json({ error: "includeOldData não é suportado para agendamentos" });
       }
 
-      // Gera o Excel
-      const workbook = await generateExcelExport({
-        type,
-        includeOldData: includeOldData || false,
-        dateFrom: dateFrom || null,
-        dateTo: dateTo || null,
-      });
-
       // Monta nome do arquivo
       const timestamp = new Date().toISOString().slice(0, 10);
       const suffix = includeOldData ? "-com-legado" : "";
       const filename = `${type}-report${suffix}-${timestamp}.xlsx`;
 
+      // Headers ANTES de começar o stream
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -97,10 +89,26 @@ class ReportController {
         `attachment; filename=${filename}`
       );
 
-      await workbook.xlsx.write(res);
+      // Stream direto para o response
+      await streamExcelExport(
+        {
+          type,
+          includeOldData: includeOldData || false,
+          dateFrom: dateFrom || null,
+          dateTo: dateTo || null,
+        },
+        res
+      );
     } catch (error) {
       console.error("Erro no exportData:", error);
-      res.status(500).json({ error: error.message });
+
+      // Se ainda não começou a enviar, manda erro JSON
+      if (!res.headersSent) {
+        res.status(500).json({ error: error.message });
+      } else {
+        // Se já começou o stream, só fecha
+        res.end();
+      }
     }
   };
 }
