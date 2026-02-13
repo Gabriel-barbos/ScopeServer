@@ -226,13 +226,13 @@ class ServiceController {
           ? Service.find(filter)
               .populate("client", "name image")
               .populate("product", "name")
-              .sort({ createdAt: -1 })
+              .sort({ validatedAt: -1 })
               .skip(mainSkip)
               .limit(mainLimit)
           : [],
         legacyLimit > 0
           ? ServiceLegacy.find(filter)
-              .sort({ createdAt: -1 })
+              .sort({ validatedAt: -1 })
               .skip(legacySkip)
               .limit(legacyLimit)
           : [],
