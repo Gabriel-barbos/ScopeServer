@@ -1,4 +1,5 @@
 import getServiceModel from "../models/Service.js";
+import getServiceLegacyModel from "../models/ServiceLegacy.js";
 import getScheduleModel from "../models/Schedule.js";
 import getClientModel from "../models/Client.js";
 import getProductModel from "../models/Product.js";
@@ -190,13 +191,14 @@ class ServiceController {
     }
   }
 
-  // ─── LIST com paginação e busca ───────────────────────────────────────────
+  // ─── LIST unificado: Service (prioridade) + ServiceLegacy ─────────────────
 
   async list(req, res) {
     try {
       await getClientModel();
       await getProductModel();
       const Service = await getServiceModel();
+      const ServiceLegacy = await getServiceLegacyModel();
 
       const page  = Math.max(1, parseInt(req.query.page)  || 1);
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
@@ -204,18 +206,50 @@ class ServiceController {
 
       const filter = this.#buildFilter(req.query);
 
-      const [data, total] = await Promise.all([
-        Service.find(filter)
-          .populate("client", "name image")
-          .populate("product", "name")
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(limit),
+      // Totais das duas collections em paralelo
+      const [totalMain, totalLegacy] = await Promise.all([
         Service.countDocuments(filter),
+        ServiceLegacy.countDocuments(filter),
       ]);
 
+      const total = totalMain + totalLegacy;
+
+      // Calcula fatia de cada collection para esta página
+      const mainSkip    = Math.min(skip, totalMain);
+      const mainLimit   = Math.min(limit, Math.max(0, totalMain - mainSkip));
+      const legacySkip  = Math.max(0, skip - totalMain);
+      const legacyLimit = limit - mainLimit;
+
+      // Busca em paralelo — legacy só é consultado quando necessário
+      const [mainData, legacyData] = await Promise.all([
+        mainLimit > 0
+          ? Service.find(filter)
+              .populate("client", "name image")
+              .populate("product", "name")
+              .sort({ createdAt: -1 })
+              .skip(mainSkip)
+              .limit(mainLimit)
+          : [],
+        legacyLimit > 0
+          ? ServiceLegacy.find(filter)
+              .sort({ createdAt: -1 })
+              .skip(legacySkip)
+              .limit(legacyLimit)
+          : [],
+      ]);
+
+      // Normaliza legacy para o mesmo shape que o frontend espera
+      const legacyNormalized = legacyData.map((doc) => {
+        const obj = doc.toObject();
+        return {
+          ...obj,
+          client:  { _id: null, name: obj.client  ?? "—", image: [] },
+          product: obj.product ? { _id: null, name: obj.product } : null,
+        };
+      });
+
       return res.json({
-        data,
+        data: [...mainData, ...legacyNormalized],
         pagination: {
           page,
           limit,
@@ -299,7 +333,6 @@ class ServiceController {
   #buildFilter(query) {
     const filter = {};
 
-    // Busca por VIN, plate ou deviceId (case-insensitive)
     if (query.search) {
       const regex = new RegExp(query.search, "i");
       filter.$or = [
@@ -309,9 +342,9 @@ class ServiceController {
       ];
     }
 
-    if (query.status) filter.status = query.status;
+    if (query.status)      filter.status      = query.status;
     if (query.serviceType) filter.serviceType = query.serviceType;
-    if (query.client) filter.client = query.client;
+    if (query.client)      filter.client      = query.client;
 
     return filter;
   }
@@ -397,9 +430,9 @@ class ServiceController {
   #normalizeStatus(status) {
     if (!status) return null;
     const n = status.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    if (n.includes("conclu"))  return "concluido";
-    if (n.includes("observ"))  return "observacao";
-    if (n.includes("cancel"))  return "cancelado";
+    if (n.includes("conclu")) return "concluido";
+    if (n.includes("observ")) return "observacao";
+    if (n.includes("cancel")) return "cancelado";
     return status;
   }
 

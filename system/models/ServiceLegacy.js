@@ -9,7 +9,6 @@ const ServiceLegacySchema = new mongoose.Schema(
     scheduledDate: { type: Date },
     serviceType: {
       type: String,
-      enum: ["installation", "maintenance", "removal"],
       required: true,
     },
     notes: { type: String },
