@@ -4,6 +4,5 @@ import ReportController from "../controllers/ReportController.js";
 const router = Router();
 
 router.get("/", ReportController.getReportData);
-router.get("/export", ReportController.exportData);
-
+router.post("/export", ReportController.exportData);
 export default router;
