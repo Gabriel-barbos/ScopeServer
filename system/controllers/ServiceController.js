@@ -5,7 +5,7 @@ import getProductModel from "../models/Product.js";
 
 class ServiceController {
 
-    constructor() {
+  constructor() {
     this.createFromValidation = this.createFromValidation.bind(this);
     this.create = this.create.bind(this);
     this.bulkImport = this.bulkImport.bind(this);
@@ -15,15 +15,15 @@ class ServiceController {
     this.remove = this.remove.bind(this);
   }
 
-  // Criar serviço a partir de validação
   async createFromValidation(req, res) {
- try {
-    const { scheduleId, validationData } = req.body;
-    
-    const Client = await getClientModel();
-    const Product = await getProductModel();
-    const Schedule = await getScheduleModel();
-    const Service = await getServiceModel();
+    try {
+      const { scheduleId, validationData } = req.body;
+
+      await getClientModel();
+      await getProductModel();
+      const Schedule = await getScheduleModel();
+      const Service = await getServiceModel();
+
       const schedule = await Schedule.findById(scheduleId)
         .populate("client")
         .populate("product");
@@ -43,7 +43,6 @@ class ServiceController {
         product: schedule.product,
         client: schedule.client,
         provider: schedule.provider,
-        
         status: validationData.status,
         deviceId: validationData.deviceId,
         technician: validationData.technician,
@@ -56,11 +55,10 @@ class ServiceController {
         secondaryDevice: validationData.secondaryDevice,
         validatedBy: validationData.validatedBy,
         validatedAt: new Date(),
-
         schedule: scheduleId,
         source: "validation"
       });
-      
+
       await Schedule.findByIdAndUpdate(scheduleId, {
         status: "concluido",
         service: service._id
@@ -72,13 +70,13 @@ class ServiceController {
     }
   }
 
-  // Criar serviço direto 
   async create(req, res) {
     try {
-        const Service = await getServiceModel();
-      const Schedule = await getScheduleModel();
-      const Client = await getClientModel();
-      const Product = await getProductModel();
+      await getClientModel();
+      await getProductModel();
+      await getScheduleModel();
+      const Service = await getServiceModel();
+
       const service = await Service.create({
         ...req.body,
         source: "import",
@@ -91,7 +89,6 @@ class ServiceController {
     }
   }
 
-  // Importação em lote com matching de cliente e produto
   async bulkImport(req, res) {
     try {
       const { services } = req.body;
@@ -106,8 +103,6 @@ class ServiceController {
 
       const errors = [];
       const processedServices = [];
-
-      // Cache de clientes e produtos para otimização
       const clientsCache = new Map();
       const productsCache = new Map();
 
@@ -115,21 +110,18 @@ class ServiceController {
         const service = services[i];
         const lineNum = i + 1;
 
-        // Validações obrigatórias
         const validation = this.#validateService(service, lineNum);
         if (validation.errors.length > 0) {
           errors.push(...validation.errors);
           continue;
         }
 
-        // Resolver cliente (por ID ou nome)
         const clientId = await this.#resolveClient(service.client, clientsCache);
         if (!clientId) {
           errors.push(`Linha ${lineNum}: Cliente "${service.client}" não encontrado`);
           continue;
         }
 
-        // Resolver produto (opcional, por ID ou nome)
         let productId = null;
         if (service.product) {
           productId = await this.#resolveProduct(service.product, productsCache);
@@ -139,13 +131,12 @@ class ServiceController {
           }
         }
 
-        // Normalizar tipo de serviço
         const serviceType = this.#normalizeServiceType(service.serviceType);
         if (!serviceType) {
           errors.push(`Linha ${lineNum}: Tipo de serviço inválido`);
           continue;
         }
-        
+
         processedServices.push({
           plate: service.plate,
           vin: service.vin,
@@ -170,7 +161,6 @@ class ServiceController {
         });
       }
 
-      // Se houver erros de validação, retornar sem inserir
       if (errors.length > 0) {
         return res.status(400).json({
           error: "Erros de validação",
@@ -178,11 +168,9 @@ class ServiceController {
         });
       }
 
-      // Inserir serviços
+      await getClientModel();
+      await getProductModel();
       const Service = await getServiceModel();
-      const Schedule = await getScheduleModel();
-      const Client = await getClientModel();
-      const Product = await getProductModel();
       const created = await Service.insertMany(processedServices, { ordered: false });
 
       return res.status(201).json({
@@ -192,7 +180,7 @@ class ServiceController {
       });
 
     } catch (error) {
-      if (error.name === 'MongoBulkWriteError') {
+      if (error.name === "MongoBulkWriteError") {
         return res.status(400).json({
           error: "Alguns registros falharam",
           details: error.writeErrors?.map(e => e.errmsg).slice(0, 10)
@@ -202,31 +190,54 @@ class ServiceController {
     }
   }
 
-  // Listar serviços
+  //list com filtros de vin, plate, deviceId, status, serviceType e client, com paginação
+
   async list(req, res) {
     try {
+      await getClientModel();
+      await getProductModel();
       const Service = await getServiceModel();
-      const Schedule = await getScheduleModel();
-      const Client = await getClientModel();
-      const Product = await getProductModel();
-      const services = await Service.find()
-        .populate("client", "name image")
-        .populate("product", "name")
-        .sort({ createdAt: -1 });
 
-      return res.json(services);
+      const page  = Math.max(1, parseInt(req.query.page)  || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+      const skip  = (page - 1) * limit;
+
+      const filter = this.#buildFilter(req.query);
+
+      const [data, total] = await Promise.all([
+        Service.find(filter)
+          .populate("client", "name")
+          .populate("product", "name")
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit),
+        Service.countDocuments(filter),
+      ]);
+
+      return res.json({
+        data,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasNext: page * limit < total,
+          hasPrev: page > 1,
+        },
+      });
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
   }
 
-  // Buscar por ID
+
+
   async findById(req, res) {
     try {
+      await getClientModel();
+      await getProductModel();
       const Service = await getServiceModel();
-      const Schedule = await getScheduleModel();
-      const Client = await getClientModel();
-      const Product = await getProductModel();
+
       const service = await Service.findById(req.params.id)
         .populate("client")
         .populate("product")
@@ -242,16 +253,15 @@ class ServiceController {
     }
   }
 
-  // Atualizar serviço 
   async update(req, res) {
     try {
       const forbiddenFields = ["schedule", "source", "validatedAt"];
       forbiddenFields.forEach(field => delete req.body[field]);
-      
+
+      await getClientModel();
+      await getProductModel();
       const Service = await getServiceModel();
-      const Schedule = await getScheduleModel();
-      const Client = await getClientModel();
-      const Product = await getProductModel();
+
       const service = await Service.findByIdAndUpdate(
         req.params.id,
         req.body,
@@ -268,13 +278,10 @@ class ServiceController {
     }
   }
 
-  // Excluir serviço
   async remove(req, res) {
     try {
       const Service = await getServiceModel();
-      const Schedule = await getScheduleModel();
-      const Client = await getClientModel();
-      const Product = await getProductModel();
+
       const service = await Service.findByIdAndDelete(req.params.id);
 
       if (!service) {
@@ -287,7 +294,27 @@ class ServiceController {
     }
   }
 
-  //metodos auxiliares
+  //helpers
+
+  #buildFilter(query) {
+    const filter = {};
+
+    // Busca por VIN, plate ou deviceId (case-insensitive)
+    if (query.search) {
+      const regex = new RegExp(query.search, "i");
+      filter.$or = [
+        { vin: regex },
+        { plate: regex },
+        { deviceId: regex },
+      ];
+    }
+
+    if (query.status) filter.status = query.status;
+    if (query.serviceType) filter.serviceType = query.serviceType;
+    if (query.client) filter.client = query.client;
+
+    return filter;
+  }
 
   #validateService(service, lineNum) {
     const errors = [];
@@ -298,8 +325,7 @@ class ServiceController {
       client: "Cliente",
       deviceId: "ID do dispositivo",
       product: "Produto",
-      status  : "Status",
-  
+      status: "Status",
     };
 
     Object.entries(required).forEach(([field, label]) => {
@@ -312,106 +338,68 @@ class ServiceController {
   }
 
   async #resolveClient(clientInput, cache) {
-    // Se já está no cache, retorna
-    if (cache.has(clientInput)) {
-      return cache.get(clientInput);
-    }
+    if (cache.has(clientInput)) return cache.get(clientInput);
 
-      const Client = await getClientModel();
-    // Tenta como ObjectId primeiro
+    const Client = await getClientModel();
+
     try {
       const client = await Client.findById(clientInput);
       if (client) {
         cache.set(clientInput, client._id);
         return client._id;
       }
-    } catch (e) {
-      // Não é um ObjectId válido, continua
+    } catch {
+      // não é ObjectId, segue para busca por nome
     }
 
-    // Busca por nome
     const client = await Client.findOne({
       name: { $regex: new RegExp(clientInput, "i") }
     });
 
-    if (client) {
-      cache.set(clientInput, client._id);
-      return client._id;
-    }
-
-    cache.set(clientInput, null);
-    return null;
+    const result = client?._id ?? null;
+    cache.set(clientInput, result);
+    return result;
   }
 
   async #resolveProduct(productInput, cache) {
-    if (cache.has(productInput)) {
-      return cache.get(productInput);
-    }
+    if (cache.has(productInput)) return cache.get(productInput);
 
-     const Product = await getProductModel();
-    // Tenta como ObjectId
+    const Product = await getProductModel();
+
     try {
       const product = await Product.findById(productInput);
       if (product) {
         cache.set(productInput, product._id);
         return product._id;
       }
-    } catch (e) {
-      // Não é ObjectId
+    } catch {
+      // não é ObjectId, segue para busca por nome
     }
 
-    // Busca por nome
     const product = await Product.findOne({
       name: { $regex: new RegExp(productInput, "i") }
     });
 
-    if (product) {
-      cache.set(productInput, product._id);
-      return product._id;
-    }
-
-    cache.set(productInput, null);
-    return null;
+    const result = product?._id ?? null;
+    cache.set(productInput, result);
+    return result;
   }
 
   #normalizeServiceType(type) {
     if (!type) return null;
-
-    const normalized = type.toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-
-    const mappings = {
-      instal: "installation",
-      manut: "maintenance",
-      remo: "removal"
-    };
-
-    for (const [key, value] of Object.entries(mappings)) {
-      if (normalized.includes(key)) return value;
-    }
-
+    const n = type.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (n.includes("instal")) return "installation";
+    if (n.includes("manut"))  return "maintenance";
+    if (n.includes("remo"))   return "removal";
     return null;
   }
 
   #normalizeStatus(status) {
     if (!status) return null;
-
-    const normalized = status.toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-
-    const mappings = {
-      conclu: "concluido",
-      observ: "observacao",
-      pendente: "pendente",
-      cancel: "cancelado"
-    };
-
-    for (const [key, value] of Object.entries(mappings)) {
-      if (normalized.includes(key)) return value;
-    }
-
+    const n = status.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (n.includes("conclu"))  return "concluido";
+    if (n.includes("observ"))  return "observacao";
+    if (n.includes("cancel"))  return "cancelado";
     return status;
   }
 
@@ -419,22 +407,19 @@ class ServiceController {
     if (!dateValue) return null;
     if (dateValue instanceof Date) return dateValue;
 
-    // Serial do Excel 
-    if (typeof dateValue === 'number') {
+    if (typeof dateValue === "number") {
       return new Date((dateValue - 25569) * 86400 * 1000);
     }
 
-    // String ISO ou formato BR
-    if (typeof dateValue === 'string') {
-      let date = new Date(dateValue);
-      if (!isNaN(date.getTime())) return date;
+    if (typeof dateValue === "string") {
+      const iso = new Date(dateValue);
+      if (!isNaN(iso)) return iso;
 
-      // Tenta formato DD/MM/YYYY
-      const parts = dateValue.split('/');
+      const parts = dateValue.split("/");
       if (parts.length === 3) {
         const [day, month, year] = parts.map(Number);
-        date = new Date(year, month - 1, day);
-        if (!isNaN(date.getTime())) return date;
+        const d = new Date(year, month - 1, day);
+        if (!isNaN(d)) return d;
       }
     }
 
@@ -442,4 +427,4 @@ class ServiceController {
   }
 }
 
-export default new ServiceController(); 
+export default new ServiceController();

@@ -1,11 +1,10 @@
-
 import mongoose from "mongoose";
 import { getSystemDB } from "../../config/databases.js";
 
 const ServiceSchema = new mongoose.Schema(
   {
     plate: { type: String },
-    vin: { type: String, required: true, index: true },
+    vin: { type: String, required: true },
     model: { type: String, required: true },
     scheduledDate: { type: Date },
     serviceType: {
@@ -53,18 +52,18 @@ const ServiceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+ServiceSchema.index({ vin: 1 });
+ServiceSchema.index({ deviceId: 1 });
+ServiceSchema.index({ plate: 1 });
+ServiceSchema.index({ createdAt: -1 });
+
 let Service = null;
 
 const getServiceModel = async () => {
-  if (Service) {
-    return Service;
-  }
-  
+  if (Service) return Service;
+
   const systemDB = await getSystemDB();
-  
   Service = systemDB.models.Service || systemDB.model("Service", ServiceSchema);
-  
-  
   return Service;
 };
 
