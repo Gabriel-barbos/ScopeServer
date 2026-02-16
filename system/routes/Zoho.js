@@ -56,4 +56,8 @@ router.post("/from-zoho", async (req, res) => {
   }
 });
 
+router.get("/from-zoho", (req, res) => {
+  res.status(200).json({ message: "Webhook endpoint active" });
+});
+
 export default router;
