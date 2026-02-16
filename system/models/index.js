@@ -4,6 +4,7 @@ import getScheduleModel from "./Schedule.js";
 import getServiceModel from "./Service.js";
 import getUserModel from "./User.js";
 import getServiceLegacyModel from "./ServiceLegacy.js";
+import getMaintenanceRequestModel from "./MaintenanceRequest.js";
 
 let modelsInitialized = false;
 
@@ -16,6 +17,7 @@ export const initializeModels = async () => {
   await getScheduleModel();
   await getServiceModel();
   await getServiceLegacyModel();
+  await getMaintenanceRequestModel();
 
   modelsInitialized = true;
   console.log("✅ Models do sistema inicializados");
