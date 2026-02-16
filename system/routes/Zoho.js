@@ -5,10 +5,19 @@ const router = Router();
 
 router.post("/from-zoho", async (req, res) => {
   try {
-    console.log("Payload completo:", JSON.stringify(data, null, 2));
+    let data;
 
-    // Se o Deluge enviar como string JSON, faz o parse
-    const data = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    if (typeof req.body === "string") {
+      try {
+        data = JSON.parse(req.body);
+      } catch (e) {
+        data = {};
+      }
+    } else {
+      data = req.body || {};
+    }
+
+    console.log("Zoho payload:", JSON.stringify(data, null, 2));
 
     const MaintenanceRequest = await getMaintenanceRequestModel();
 
