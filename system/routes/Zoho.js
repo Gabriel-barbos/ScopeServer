@@ -1,5 +1,6 @@
 import { Router } from "express";
 import getMaintenanceRequestModel from "../models/MaintenanceRequest.js";
+import getScheduleModel from "../models/Schedule.js"; // assumindo que você tem
 
 const router = Router();
 
@@ -17,8 +18,6 @@ router.post("/from-zoho", async (req, res) => {
     } else {
       data = req.body || {};
     }
-
-    console.log("Zoho payload:", JSON.stringify(data, null, 2));
 
     const MaintenanceRequest = await getMaintenanceRequestModel();
 
@@ -50,7 +49,8 @@ router.post("/from-zoho", async (req, res) => {
       contactName,
       contactEmail,
       status,
-      category
+      category,
+      vehicles: [] // inicia vazio
     });
 
     await maintenance.save();
@@ -67,7 +67,7 @@ router.get("/from-zoho", (req, res) => {
   res.status(200).json({ message: "Webhook endpoint active" });
 });
 
-// GET - Listar todas as solicitações de manutenção
+// GET - Listar todas
 router.get("/", async (req, res) => {
   try {
     const MaintenanceRequest = await getMaintenanceRequestModel();
@@ -80,7 +80,6 @@ router.get("/", async (req, res) => {
       limit = 20 
     } = req.query;
 
-    // Monta filtros dinamicamente
     const filters = {};
     if (status) filters.status = status;
     if (schedulingStatus) filters.schedulingStatus = schedulingStatus;
@@ -90,6 +89,7 @@ router.get("/", async (req, res) => {
 
     const [maintenances, total] = await Promise.all([
       MaintenanceRequest.find(filters)
+        .populate('client', 'name')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit)),
@@ -112,11 +112,13 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET - Buscar uma solicitação específica por ID
+// GET - Buscar uma específica
 router.get("/:id", async (req, res) => {
   try {
     const MaintenanceRequest = await getMaintenanceRequestModel();
-    const maintenance = await MaintenanceRequest.findById(req.params.id);
+    const maintenance = await MaintenanceRequest.findById(req.params.id)
+      .populate('client', 'name')
+      .populate('schedules');
 
     if (!maintenance) {
       return res.status(404).json({ error: "Maintenance request not found" });
@@ -135,25 +137,23 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// PATCH - Atualizar status de agendamento
-router.patch("/:id/scheduling-status", async (req, res) => {
+// PATCH - Atualizar request (subject, schedulingStatus, vehicles)
+router.patch("/:id", async (req, res) => {
   try {
     const MaintenanceRequest = await getMaintenanceRequestModel();
-    const { schedulingStatus } = req.body;
+    const { subject, schedulingStatus, vehicles, client } = req.body;
 
-    const validStatuses = ["pending", "scheduled", "completed", "canceled"];
-    if (!validStatuses.includes(schedulingStatus)) {
-      return res.status(400).json({ 
-        error: "Invalid scheduling status",
-        validStatuses 
-      });
-    }
+    const updateData = {};
+    if (subject) updateData.subject = subject;
+    if (schedulingStatus) updateData.schedulingStatus = schedulingStatus;
+    if (vehicles) updateData.vehicles = vehicles;
+    if (client) updateData.client = client;
 
     const maintenance = await MaintenanceRequest.findByIdAndUpdate(
       req.params.id,
-      { schedulingStatus },
+      updateData,
       { new: true, runValidators: true }
-    );
+    ).populate('client', 'name');
 
     if (!maintenance) {
       return res.status(404).json({ error: "Maintenance request not found" });
@@ -162,12 +162,93 @@ router.patch("/:id/scheduling-status", async (req, res) => {
     res.json(maintenance);
 
   } catch (error) {
-    console.error("Update scheduling status error:", error);
+    console.error("Update maintenance error:", error);
     res.status(500).json({ error: "Internal error" });
   }
 });
 
-// DELETE - Remover uma solicitação
+// POST - Criar schedules a partir do request
+router.post("/:id/create-schedules", async (req, res) => {
+  try {
+    const MaintenanceRequest = await getMaintenanceRequestModel();
+    const Schedule = await getScheduleModel();
+
+    const maintenance = await MaintenanceRequest.findById(req.params.id);
+
+    if (!maintenance) {
+      return res.status(404).json({ error: "Maintenance request not found" });
+    }
+
+    // Validações
+    if (!maintenance.client) {
+      return res.status(400).json({ error: "Client is required to create schedules" });
+    }
+
+    if (!maintenance.vehicles || maintenance.vehicles.length === 0) {
+      return res.status(400).json({ error: "At least one vehicle is required" });
+    }
+
+    // Valida cada veículo
+    for (const vehicle of maintenance.vehicles) {
+      if (!vehicle.plate && !vehicle.vin) {
+        return res.status(400).json({ 
+          error: "Each vehicle must have either plate or VIN (chassi)" 
+        });
+      }
+      if (!vehicle.serviceAddress) {
+        return res.status(400).json({ error: "Service address is required for all vehicles" });
+      }
+      if (!vehicle.responsible) {
+        return res.status(400).json({ error: "Responsible is required for all vehicles" });
+      }
+      if (!vehicle.responsiblePhone) {
+        return res.status(400).json({ error: "Responsible phone is required for all vehicles" });
+      }
+    }
+
+    // Cria um Schedule para cada veículo
+    const createdSchedules = [];
+
+    for (const vehicle of maintenance.vehicles) {
+      const schedule = new Schedule({
+        maintenanceRequest: maintenance._id,
+        client: maintenance.client,
+        ticketNumber: maintenance.ticketNumber,
+        subject: maintenance.subject,
+        description: maintenance.description,
+        category: maintenance.category,
+        plate: vehicle.plate,
+        vin: vehicle.vin,
+        serviceAddress: vehicle.serviceAddress, // corrigido
+        responsible: vehicle.responsible,
+        responsiblePhone: vehicle.responsiblePhone,
+        serviceType: "maintenance", // ou o que fizer sentido no seu sistema
+        source: "zoho",
+        status: "criado",
+      });
+
+      await schedule.save();
+      createdSchedules.push(schedule._id);
+    }
+
+    // Atualiza o request
+    maintenance.schedules = createdSchedules;
+    maintenance.schedulingStatus = "completed";
+    await maintenance.save();
+
+    res.status(201).json({
+      message: `${createdSchedules.length} schedule(s) created successfully`,
+      schedulesCreated: createdSchedules.length,
+      scheduleIds: createdSchedules
+    });
+
+  } catch (error) {
+    console.error("Create schedules error:", error);
+    res.status(500).json({ error: "Internal error" });
+  }
+});
+
+// DELETE - Remover request
 router.delete("/:id", async (req, res) => {
   try {
     const MaintenanceRequest = await getMaintenanceRequestModel();

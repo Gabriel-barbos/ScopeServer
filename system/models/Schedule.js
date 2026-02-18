@@ -3,9 +3,25 @@ import { getSystemDB } from "../../config/databases.js";
 
 const ScheduleSchema = new mongoose.Schema(
   {
+    // Referência ao MaintenanceRequest de origem
+    maintenanceRequest: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "MaintenanceRequest",
+      required: false // só obrigatório quando vem de request
+    },
+    
+    // Dados do Zoho (quando vem de request)
+    ticketNumber: { type: String, required: false },
+    subject: { type: String, required: false },
+    description: { type: String, required: false },
+    category: { type: String, required: false },
+    
+    // Dados do veículo
     plate: { type: String, required: false },
-    vin: { type: String, required: true },
+    vin: { type: String, required: false }, // removido required: true
     model: { type: String, required: false },
+    
+    // Dados do agendamento
     scheduledDate: { type: Date, required: false },
     serviceType: { type: String, required: true },
     notes: { type: String },
@@ -13,10 +29,17 @@ const ScheduleSchema = new mongoose.Schema(
     provider: { type: String, required: false },
     orderNumber: { type: String, required: false },
     
-    serviceAdress: { type: String, required: false },
+    // Dados de localização e contato
+    serviceAddress: { type: String, required: false }, // corrigido typo "Adress" → "Address"
     responsible: { type: String, required: false },
     responsiblePhone: { type: String, required: false },
+    
     situation: { type: String, required: false },
+    source: { 
+      type: String, 
+      required: false,
+      default: "manual" // quando vem de request será "zoho"
+    },
     
     product: {
       type: mongoose.Schema.Types.ObjectId,
@@ -25,11 +48,13 @@ const ScheduleSchema = new mongoose.Schema(
         return this.serviceType === "installation";
       },
     },
+    
     client: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Client",
       required: true,
     },
+    
     status: {
       type: String,
       enum: ["criado", "agendado", "concluido", "atrasado", "cancelado"],
@@ -42,6 +67,7 @@ const ScheduleSchema = new mongoose.Schema(
 ScheduleSchema.index({ vin: 1 });
 ScheduleSchema.index({ plate: 1 });
 ScheduleSchema.index({ createdAt: -1 });
+ScheduleSchema.index({ maintenanceRequest: 1 }); // novo índice
 
 let Schedule = null;
 
