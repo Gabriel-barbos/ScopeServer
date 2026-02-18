@@ -42,7 +42,6 @@ export const getNfDB = async () => {
 
 export const getSystemDB = async () => {
   if (systemDB) {
-    console.log("🟢 SystemDB já inicializado ");
     return systemDB;
   }
   
