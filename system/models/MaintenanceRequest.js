@@ -3,7 +3,6 @@ import { getSystemDB } from "../../config/databases.js";
 
 const maintenanceRequestSchema = new mongoose.Schema(
   {
-    // Dados do Zoho (imutáveis)
     ticketId: {
       type: String,
       required: true,
@@ -15,28 +14,26 @@ const maintenanceRequestSchema = new mongoose.Schema(
     description: String,
     contactName: String,
     contactEmail: String,
-    status: String, // Status do ticket no Zoho
+    status: String, 
     category: String,
     source: {
       type: String,
       default: "zoho"
     },
 
-    // Status do fluxo de agendamento
     schedulingStatus: {
       type: String,
       enum: ["pending", "waiting_address", "waiting_responsible", "completed", "cancelled"],
       default: "pending"
     },
 
-    // Dados coletados para criar os Schedules
     client: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Client",
       required: false,
     },
 
-    // Array de veículos (cada um virará um Schedule)
+    // Array de veículos
     vehicles: [{
       plate: { type: String, required: false },
       vin: { type: String, required: false }, // chassi
@@ -45,7 +42,7 @@ const maintenanceRequestSchema = new mongoose.Schema(
       responsiblePhone: { type: String, required: false }
     }],
 
-    // Referências aos Schedules criados
+    // Referências aos Schedules 
     schedules: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: "Schedule"

@@ -1,10 +1,10 @@
 import { Router } from "express";
 import getMaintenanceRequestModel from "../models/MaintenanceRequest.js";
-import getScheduleModel from "../models/Schedule.js"; // assumindo que você tem
+import getScheduleModel from "../models/Schedule.js"; 
 
 const router = Router();
 
-// POST - Recebe do Zoho (já existente)
+// POST - Recebe do Zoho 
 router.post("/from-zoho", async (req, res) => {
   try {
     let data;
@@ -50,7 +50,7 @@ router.post("/from-zoho", async (req, res) => {
       contactEmail,
       status,
       category,
-      vehicles: [] // inicia vazio
+      vehicles: [] 
     });
 
     await maintenance.save();
@@ -137,7 +137,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// PATCH - Atualizar request (subject, schedulingStatus, vehicles)
+// PATCH - Atualizar request 
 router.patch("/:id", async (req, res) => {
   try {
     const MaintenanceRequest = await getMaintenanceRequestModel();
@@ -219,10 +219,11 @@ router.post("/:id/create-schedules", async (req, res) => {
         category: maintenance.category,
         plate: vehicle.plate,
         vin: vehicle.vin,
-        serviceAddress: vehicle.serviceAddress, // corrigido
+        serviceAddress: vehicle.serviceAddress, 
         responsible: vehicle.responsible,
         responsiblePhone: vehicle.responsiblePhone,
-        serviceType: "maintenance", // ou o que fizer sentido no seu sistema
+         createdBy: createdBy || "Suporte",
+        serviceType: "maintenance", 
         source: "zoho",
         status: "criado",
       });

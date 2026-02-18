@@ -3,25 +3,21 @@ import { getSystemDB } from "../../config/databases.js";
 
 const ScheduleSchema = new mongoose.Schema(
   {
-    // Referência ao MaintenanceRequest de origem
     maintenanceRequest: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "MaintenanceRequest",
-      required: false // só obrigatório quando vem de request
+      required: false 
     },
     
-    // Dados do Zoho (quando vem de request)
     ticketNumber: { type: String, required: false },
     subject: { type: String, required: false },
     description: { type: String, required: false },
     category: { type: String, required: false },
     
-    // Dados do veículo
     plate: { type: String, required: false },
-    vin: { type: String, required: false }, // removido required: true
+    vin: { type: String, required: false }, 
     model: { type: String, required: false },
     
-    // Dados do agendamento
     scheduledDate: { type: Date, required: false },
     serviceType: { type: String, required: true },
     notes: { type: String },
@@ -29,8 +25,7 @@ const ScheduleSchema = new mongoose.Schema(
     provider: { type: String, required: false },
     orderNumber: { type: String, required: false },
     
-    // Dados de localização e contato
-    serviceAddress: { type: String, required: false }, // corrigido typo "Adress" → "Address"
+    serviceAddress: { type: String, required: false }, 
     responsible: { type: String, required: false },
     responsiblePhone: { type: String, required: false },
     
@@ -38,7 +33,7 @@ const ScheduleSchema = new mongoose.Schema(
     source: { 
       type: String, 
       required: false,
-      default: "manual" // quando vem de request será "zoho"
+      default: "manual" 
     },
     
     product: {
@@ -67,7 +62,7 @@ const ScheduleSchema = new mongoose.Schema(
 ScheduleSchema.index({ vin: 1 });
 ScheduleSchema.index({ plate: 1 });
 ScheduleSchema.index({ createdAt: -1 });
-ScheduleSchema.index({ maintenanceRequest: 1 }); // novo índice
+ScheduleSchema.index({ maintenanceRequest: 1 });
 
 let Schedule = null;
 
