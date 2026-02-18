@@ -5,13 +5,19 @@ const ScheduleSchema = new mongoose.Schema(
   {
     plate: { type: String, required: false },
     vin: { type: String, required: true },
-    model: { type: String, required: true },
+    model: { type: String, required: false },
     scheduledDate: { type: Date, required: false },
     serviceType: { type: String, required: true },
     notes: { type: String },
     createdBy: { type: String },
     provider: { type: String, required: false },
     orderNumber: { type: String, required: false },
+    
+    serviceAdress: { type: String, required: false },
+    responsible: { type: String, required: false },
+    responsiblePhone: { type: String, required: false },
+    situation: { type: String, required: false },
+    
     product: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
