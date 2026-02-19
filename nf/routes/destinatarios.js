@@ -9,71 +9,40 @@ const cleanNumber = (str) => (str ? str.replace(/\D/g, "") : "");
 router.post("/", async (req, res) => {
   try {
     const {
-      nome,
-      cpf,
-      cnpj,
-      ie,
-      indicadorIe,
-      endereco,
-      numero,
-      complemento,
-      bairro,
-      cidade,
-      estado,
-      cep,
-      ...rest
+      nome, cpf, cnpj, ie, indicadorIe,
+      endereco, numero, complemento, bairro,
+      cidade, estado, cep, ...rest
     } = req.body;
 
-    const camposObrigatoriosPF = [nome, cpf, endereco, numero, complemento, bairro, cidade, estado, cep];
-    const camposObrigatoriosPJ = [nome, cnpj, ie, endereco, numero, complemento, bairro, cidade, estado, cep, indicadorIe];
+    const Destinatario = await getDestinatarioModel();
 
     if (cpf && !cnpj) {
-      // Pessoa Física
+      const camposObrigatoriosPF = [nome, cpf, endereco, numero, complemento, bairro, cidade, estado, cep];
       if (camposObrigatoriosPF.some(c => !c || c.trim() === "")) {
         return res.status(400).json({ error: "Campos obrigatórios para PF estão faltando" });
       }
-      const Destinatario = await getDestinatarioModel();
-      const novoDest = new Destinatario({
-        nome,
-        cpf: cleanNumber(cpf),
-        indicadorIe: "Não Contribuinte",
-        cnpj: "",
-        ie: "",
-        endereco,
-        numero,
-        complemento,
-        bairro,
-        cidade,
-        estado,
-        cep: cleanNumber(cep),
-        ...rest
-      });
 
+      const novoDest = new Destinatario({
+        nome, cpf: cleanNumber(cpf),
+        indicadorIe: "Não Contribuinte", cnpj: "", ie: "",
+        endereco, numero, complemento, bairro,
+        cidade, estado, cep: cleanNumber(cep), ...rest
+      });
       await novoDest.save();
       return res.status(201).json(novoDest);
 
     } else if (cnpj && !cpf) {
-      // Pessoa Jurídica
+      const camposObrigatoriosPJ = [nome, cnpj, ie, endereco, numero, complemento, bairro, cidade, estado, cep, indicadorIe];
       if (camposObrigatoriosPJ.some(c => !c || c.trim() === "")) {
         return res.status(400).json({ error: "Campos obrigatórios para PJ estão faltando" });
       }
 
       const novoDest = new Destinatario({
-        nome,
-        cnpj: cleanNumber(cnpj),
-        ie,
-        indicadorIe: indicadorIe || "Contribuinte do ICMS",
-        cpf: "",
-        endereco,
-        numero,
-        complemento,
-        bairro,
-        cidade,
-        estado,
-        cep: cleanNumber(cep),
-        ...rest
+        nome, cnpj: cleanNumber(cnpj), ie,
+        indicadorIe: indicadorIe || "Contribuinte do ICMS", cpf: "",
+        endereco, numero, complemento, bairro,
+        cidade, estado, cep: cleanNumber(cep), ...rest
       });
-
       await novoDest.save();
       return res.status(201).json(novoDest);
 
@@ -86,6 +55,7 @@ router.post("/", async (req, res) => {
     res.status(500).json({ error: "Erro ao criar destinatário" });
   }
 });
+
 
 // Listar todos
 router.get("/", async (req, res) => {
