@@ -1,7 +1,7 @@
 import dns from "node:dns/promises";
 import dotenv from "dotenv";
 
-//configura o DNS antes de carregar qualquer módulo que possa fazer requisições de rede
+//configura o DNS antes  de carregar qualquer módulo que possa fazer requisições de rede
 dotenv.config();
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
 

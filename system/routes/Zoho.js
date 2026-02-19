@@ -173,6 +173,8 @@ router.post("/:id/create-schedules", async (req, res) => {
     const MaintenanceRequest = await getMaintenanceRequestModel();
     const Schedule = await getScheduleModel();
 
+    const { createdBy } = req.body; 
+
     const maintenance = await MaintenanceRequest.findById(req.params.id);
 
     if (!maintenance) {
