@@ -19,7 +19,7 @@ function getDataHoraEmissao() {
   const tzOffset = -3 * 60; 
   const localTime = new Date(agora.getTime() + tzOffset * 60 * 1000);
   const iso = localTime.toISOString().split(".")[0]; 
-  return `${iso}-03:00`;
+  return `${iso}-03:00`; 
 }
 
 async function gerarNF(pedido) {
