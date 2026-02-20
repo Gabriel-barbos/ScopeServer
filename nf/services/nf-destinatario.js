@@ -3,39 +3,21 @@ import {
   padronizarCPF,
   padronizarCNPJ,
   obterCodigoIBGE,
-  limparTextoNFe
+  limparTextoNFe,
+  resolverCidadeEUF,
 } from './utils.js';
 
-// Regex simples para detectar CEP (8 dígitos, com ou sem hífen/espaços)
-const CEP_REGEX = /^\s*\d{5}-?\d{3}\s*$/;
+async function montarDestinatario(d, defaults) {
+  if (!d.Nome)     throw new Error('Nome do destinatário é obrigatório');
+  if (!d.Estado)   throw new Error('Estado do destinatário é obrigatório');
+  if (!d.CEP)      throw new Error('CEP do destinatário é obrigatório');
+  if (!d.Endereco) throw new Error('Endereço do destinatário é obrigatório');
+  if (!d.Bairro)   throw new Error('Bairro do destinatário é obrigatório');
 
-// Detecta se o valor parece um CEP em vez de nome de cidade
-function pareceCodigoPostal(valor) {
-  return CEP_REGEX.test(valor);
-}
+  // Resolve cidade — se vier trocada com o CEP, consulta o ViaCEP automaticamente
+  const { cidade, uf } = await resolverCidadeEUF(d.Cidade, d.Estado, d.CEP);
 
-function montarDestinatario(d, defaults) {
-  if (!d.Nome)      throw new Error('Nome do destinatário é obrigatório');
-  if (!d.Cidade)    throw new Error('Cidade do destinatário é obrigatória');
-  if (!d.Estado)    throw new Error('Estado do destinatário é obrigatório');
-  if (!d.CEP)       throw new Error('CEP do destinatário é obrigatório');
-  if (!d.Endereco)  throw new Error('Endereço do destinatário é obrigatório');
-  if (!d.Bairro)    throw new Error('Bairro do destinatário é obrigatório');
-
-  // Sanitiza cidade (remove espaços extras e caracteres invisíveis)
-  const cidadeLimpa = (d.Cidade || '').trim().replace(/\s+/g, ' ');
-
-  // Detecta campo de cidade preenchido erroneamente com CEP
-  if (pareceCodigoPostal(cidadeLimpa)) {
-    throw new Error(
-      `Campo "Cidade" contém um CEP ("${cidadeLimpa}") em vez do nome da cidade. ` +
-      `Verifique o mapeamento dos campos no pedido.`
-    );
-  }
-
-  if (!cidadeLimpa) {
-    throw new Error('Cidade do destinatário está vazia após sanitização');
-  }
+  if (!cidade) throw new Error('Não foi possível determinar a cidade do destinatário');
 
   let telefone = (d.Telefone || d.Celular || '').replace(/\D/g, '');
   if (telefone.length < 6)  telefone = '1133334444';
@@ -43,11 +25,12 @@ function montarDestinatario(d, defaults) {
 
   let codigoMunicipio;
   try {
-    codigoMunicipio = obterCodigoIBGE(cidadeLimpa, d.Estado);
+    codigoMunicipio = obterCodigoIBGE(cidade, uf);
   } catch (error) {
     throw new Error(
       `Erro ao buscar código IBGE: ${error.message} | ` +
-      `Dados recebidos: Cidade="${d.Cidade}", Estado="${d.Estado}"`
+      `Dados resolvidos: Cidade="${cidade}", Estado="${uf}" | ` +
+      `Dados originais: Cidade="${d.Cidade}", Estado="${d.Estado}"`
     );
   }
 
@@ -85,21 +68,21 @@ function montarDestinatario(d, defaults) {
     indIEDest,
     IE: ieDestinatario,
     enderDest: {
-      xLgr:  limparTextoNFe(d.Endereco || d.Endereço || d.Rua),
-      nro:   limparTextoNFe(d.Numero || d.Número) || 'S/N',
-      xCpl:  limparTextoNFe(d.Complemento) || undefined,
+      xLgr:    limparTextoNFe(d.Endereco || d.Endereço || d.Rua),
+      nro:     limparTextoNFe(d.Numero || d.Número) || 'S/N',
+      xCpl:    limparTextoNFe(d.Complemento) || undefined,
       xBairro: limparTextoNFe(d.Bairro),
-      cMun:  parseInt(codigoMunicipio),
-      xMun:  limparTextoNFe(cidadeLimpa),
-      UF:    d.Estado.toUpperCase(),
-      CEP:   padronizarCEP(d.CEP),
-      cPais: 1058,
-      xPais: 'BRASIL',
-      fone:  telefone,
+      cMun:    parseInt(codigoMunicipio),
+      xMun:    limparTextoNFe(cidade),
+      UF:      uf.toUpperCase(),
+      CEP:     padronizarCEP(d.CEP),
+      cPais:   1058,
+      xPais:   'BRASIL',
+      fone:    telefone,
     },
   };
 
-  console.log(` Destinatário montado: ${destinatario.xNome}`);
+  console.log(`✅ Destinatário montado: ${destinatario.xNome}`);
   console.log(`   Município: ${destinatario.enderDest.xMun}/${destinatario.enderDest.UF}`);
   console.log(`   Código IBGE: ${destinatario.enderDest.cMun}`);
 

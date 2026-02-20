@@ -22,7 +22,7 @@ function getDataHoraEmissao() {
   return `${iso}-03:00`;
 }
 
-function gerarNF(pedido) {
+async function gerarNF(pedido) {
   const { destinatario, ultimaNotaNumero } = pedido;
 
   if (!destinatario) throw new Error("Destinatário não fornecido no pedido");
@@ -33,7 +33,7 @@ function gerarNF(pedido) {
     pedido.Cadastro_Cliente?.display_value || destinatario.Nome;
   if (!nomeCliente) throw new Error("Nome do cliente não encontrado");
 
-  const dest = montarDestinatario(destinatario, defaults);
+  const dest = await montarDestinatario(destinatario, defaults);
   const produtos = normalizarProdutos(
     pedido,
     destinatario,
