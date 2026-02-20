@@ -122,8 +122,7 @@ function normalizarTexto(texto) {
     .trim();
 }
 
-// Detecta se o valor parece um CEP (apenas dígitos, 8 caracteres)
-// .trim() remove tabs, espaços e outros whitespace
+// Detecta se o valor parece um CEP 
 function pareceCEP(valor) {
   return /^\d{5}-?\d{3}$/.test((valor || '').trim().replace(/\s+/g, ''));
 }
@@ -131,7 +130,8 @@ function pareceCEP(valor) {
 /**
  * Consulta o ViaCEP e retorna { cidade, uf }.
  * Lança erro se o CEP for inválido ou não encontrado.
- */
+  */
+
 async function resolverCidadePorCEP(cep) {
   const cepLimpo = cep.replace(/\D/g, '');
 
@@ -152,7 +152,7 @@ async function resolverCidadePorCEP(cep) {
     throw new Error(`CEP "${cep}" não encontrado no ViaCEP`);
   }
 
-  console.log(`🔍 ViaCEP: CEP ${cepLimpo} → ${data.localidade}/${data.uf}`);
+  console.log(` ViaCEP: CEP ${cepLimpo} → ${data.localidade}/${data.uf}`);
   return { cidade: data.localidade, uf: data.uf };
 }
 
@@ -172,7 +172,7 @@ async function resolverCidadeEUF(cidadeRaw, ufRaw, cepFallback) {
 
   // Cidade veio com CEP — tenta resolver pelo próprio valor ou pelo CEP do destinatário
   const cepParaConsulta = cidadeTrimada || cepFallback;
-  console.warn(`⚠️  Campo "Cidade" contém CEP ("${cidadeTrimada}"). Consultando ViaCEP...`);
+  console.warn(`  Campo "Cidade" contém CEP ("${cidadeTrimada}"). Consultando ViaCEP...`);
 
   const resultado = await resolverCidadePorCEP(cepParaConsulta);
 

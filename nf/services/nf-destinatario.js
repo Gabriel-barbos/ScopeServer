@@ -14,7 +14,7 @@ async function montarDestinatario(d, defaults) {
   if (!d.Endereco) throw new Error('Endereço do destinatário é obrigatório');
   if (!d.Bairro)   throw new Error('Bairro do destinatário é obrigatório');
 
-  // Resolve cidade — se vier trocada com o CEP, consulta o ViaCEP automaticamente
+  // Resolve cidade se vier trocada com o CEP, consulta o ViaCEP automaticamente
   const { cidade, uf } = await resolverCidadeEUF(d.Cidade, d.Estado, d.CEP);
 
   if (!cidade) throw new Error('Não foi possível determinar a cidade do destinatário');
@@ -82,7 +82,7 @@ async function montarDestinatario(d, defaults) {
     },
   };
 
-  console.log(`✅ Destinatário montado: ${destinatario.xNome}`);
+  console.log(` Destinatário montado: ${destinatario.xNome}`);
   console.log(`   Município: ${destinatario.enderDest.xMun}/${destinatario.enderDest.UF}`);
   console.log(`   Código IBGE: ${destinatario.enderDest.cMun}`);
 

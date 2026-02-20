@@ -30,7 +30,7 @@ async function gerarNF(pedido) {
   const nomeCliente = pedido.Cadastro_Cliente?.display_value || destinatario.Nome;
   if (!nomeCliente) throw new Error("Nome do cliente não encontrado");
 
-  // async — resolve cidade automaticamente se vier com CEP no campo
+  //resolve cidade se vier com CEP no campo
   const dest = await montarDestinatario(destinatario, defaults);
   const produtos = normalizarProdutos(pedido, destinatario, produtosCatalogo, defaults);
 

@@ -14,10 +14,10 @@ async function emitirNota(req, res) {
       return res.status(400).json({ sucesso: false, erro: "ultimaNotaNumero é obrigatório" });
     }
 
-    console.log("📋 Gerando JSON da NF-e...");
-    const jsonNF = await gerarNF(dadosPedido); // ← await adicionado
+    console.log(" Gerando JSON da NF-e...");
+    const jsonNF = await gerarNF(dadosPedido); 
 
-    console.log("📤 Enviando para Nuvem Fiscal...");
+    console.log(" Enviando para API nuvem fiscal...");
     const resultado = await emitirNFe(jsonNF);
 
     if (!resultado.sucesso) {
@@ -34,7 +34,7 @@ async function emitirNota(req, res) {
       });
     }
 
-    console.log("📄 Buscando PDF...");
+    console.log(" Buscando PDF...");
     const pdfBuffer = await buscarPDF(resultado.eventoId);
 
     const dadosResposta = {
@@ -64,14 +64,14 @@ async function emitirNota(req, res) {
           protocolo: resultado.protocolo,
           destinatario: jsonNF.infNFe.dest.xNome,
         });
-        console.log("✅ Nota salva no banco");
+        console.log(" Nota salva no banco");
       } catch (err) {
-        console.error("❌ Erro ao salvar nota:", err.message);
+        console.error(" Erro ao salvar nota:", err.message);
       }
     });
 
   } catch (error) {
-    console.error("❌ Erro ao emitir NF-e:", error);
+    console.error(" Erro ao emitir NF-e:", error);
     res.status(500).json({
       sucesso: false,
       erro: "Erro ao processar emissão da NF-e",
@@ -98,7 +98,7 @@ async function buscarPDFNota(req, res) {
     });
 
   } catch (error) {
-    console.error("❌ Erro ao buscar PDF:", error);
+    console.error(" Erro ao buscar PDF:", error);
     res.status(500).json({
       sucesso: false,
       erro: "Erro ao buscar PDF da NF-e",
@@ -115,7 +115,7 @@ async function listarHistorico(req, res) {
     res.status(200).json({ sucesso: true, total: notas.length, dados: notas });
 
   } catch (error) {
-    console.error("❌ Erro ao buscar histórico:", error);
+    console.error(" Erro ao buscar histórico:", error);
     res.status(500).json({
       sucesso: false,
       erro: "Erro ao buscar histórico de notas",

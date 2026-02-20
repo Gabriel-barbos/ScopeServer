@@ -72,7 +72,7 @@ function normalizarProdutos(pedido, destinatario, produtosCatalogo, defaults) {
     throw new Error(`Nenhum produto válido encontrado no pedido ${pedido.ID}`);
   }
 
-  console.log(`✅ Produtos finais:`, Array.from(itensMap.entries()));
+  console.log(` Produtos finais:`, Array.from(itensMap.entries()));
 
   // Montar estrutura de produtos para NF-e
   const ufEmitente = defaults.emit.enderEmit.UF;

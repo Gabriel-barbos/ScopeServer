@@ -2,7 +2,7 @@ import express from "express";
 import getDestinatarioModel from "../models/Destinatario.js";
 const router = express.Router();
 
-// Função para limpar CPF/CNPJ/CEP
+// Função  limpar CPF/CNPJ/CEP
 const cleanNumber = (str) => (str ? str.replace(/\D/g, "") : "");
 
 // Criar destinatário
@@ -146,7 +146,7 @@ router.patch("/:id", async (req, res) => {
 });
 
 
-// Atualizar destinatário completo (PUT)
+// Atualizar destinatário completo 
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;

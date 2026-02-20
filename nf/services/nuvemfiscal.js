@@ -24,7 +24,7 @@ const CONFIG = {
 
 // Falha rápida em produção
 if (!CONFIG.CLIENT_ID || !CONFIG.CLIENT_SECRET) {
-  throw new Error("❌ Nuvem Fiscal: CLIENT_ID ou CLIENT_SECRET não configurados no ambiente");
+  throw new Error(" Nuvem Fiscal: CLIENT_ID ou CLIENT_SECRET não configurados no ambiente");
 }
 
 let tokenCache = null;
@@ -59,14 +59,14 @@ async function obterToken() {
   tokenCache = data.access_token;
   tokenExpiry = Date.now() + data.expires_in * 1000;
 
-  console.log(`🔑 Token Nuvem Fiscal obtido (expira em ${data.expires_in}s)`);
+  console.log(` Token Nuvem Fiscal obtido (expira em ${data.expires_in}s)`);
   return tokenCache;
 }
 
 async function emitirNFe(jsonNF) {
   const token = await obterToken();
 
-  console.log(`📤 Enviando NF-e (${CONFIG.AMBIENTE})`);
+  console.log(` Enviando NF-e (${CONFIG.AMBIENTE})`);
   console.log(`   Número: ${jsonNF.infNFe.ide.nNF}`);
 
   const response = await fetch(CONFIG.API_URL, {
@@ -82,7 +82,7 @@ async function emitirNFe(jsonNF) {
   const rawBody = await response.text();
 
   if (!response.ok) {
-    console.error("❌ Erro Nuvem Fiscal:", rawBody);
+    console.error(" Erro Nuvem Fiscal:", rawBody);
     throw new Error(`Erro Nuvem Fiscal ${response.status}: ${rawBody}`);
   }
 
@@ -92,7 +92,7 @@ async function emitirNFe(jsonNF) {
 
   const responseData = JSON.parse(rawBody);
 
-  console.log("✅ NF-e enviada com sucesso");
+  console.log(" NF-e enviada com sucesso");
   return analisarRespostaNF(responseData);
 }
 
