@@ -12,14 +12,12 @@ const __dirname = dirname(__filename);
 const produtosCatalogo = loadJSON("../data/produtos.json");
 const defaults = loadJSON("../data/default.json");
 
-
-
 function getDataHoraEmissao() {
   const agora = new Date();
-  const tzOffset = -3 * 60; 
+  const tzOffset = -3 * 60;
   const localTime = new Date(agora.getTime() + tzOffset * 60 * 1000);
-  const iso = localTime.toISOString().split(".")[0]; 
-  return `${iso}-03:00`; 
+  const iso = localTime.toISOString().split(".")[0];
+  return `${iso}-03:00`;
 }
 
 async function gerarNF(pedido) {
@@ -29,17 +27,12 @@ async function gerarNF(pedido) {
   if (ultimaNotaNumero === undefined || ultimaNotaNumero === null)
     throw new Error("Número da última nota (ultimaNotaNumero) é obrigatório");
 
-  const nomeCliente =
-    pedido.Cadastro_Cliente?.display_value || destinatario.Nome;
+  const nomeCliente = pedido.Cadastro_Cliente?.display_value || destinatario.Nome;
   if (!nomeCliente) throw new Error("Nome do cliente não encontrado");
 
+  // async — resolve cidade automaticamente se vier com CEP no campo
   const dest = await montarDestinatario(destinatario, defaults);
-  const produtos = normalizarProdutos(
-    pedido,
-    destinatario,
-    produtosCatalogo,
-    defaults
-  );
+  const produtos = normalizarProdutos(pedido, destinatario, produtosCatalogo, defaults);
 
   const vTotalProd = parseFloat(
     produtos.reduce((acc, p) => acc + p.prod.vProd, 0).toFixed(2)
@@ -55,10 +48,9 @@ async function gerarNF(pedido) {
         mod: parseInt(defaults.ide.mod),
         serie: parseInt(defaults.ide.serie),
         nNF: parseInt(ultimaNotaNumero) + 1,
-        dhEmi: getDataHoraEmissao(), 
+        dhEmi: getDataHoraEmissao(),
         tpNF: parseInt(defaults.ide.tpNF),
-        idDest:
-          destinatario.Estado === defaults.emit.enderEmit.UF ? 1 : 2,
+        idDest: destinatario.Estado === defaults.emit.enderEmit.UF ? 1 : 2,
         cMunFG: parseInt(defaults.ide.cMunFG),
         tpImp: parseInt(defaults.ide.tpImp),
         tpEmis: parseInt(defaults.ide.tpEmis),
@@ -125,8 +117,7 @@ async function gerarNF(pedido) {
           {
             indPag: parseInt(defaults.pag.detPag[0].indPag),
             tPag: defaults.pag.detPag[0].tPag,
-            vPag:
-              defaults.pag.detPag[0].tPag === "90" ? 0.0 : vTotalProd,
+            vPag: defaults.pag.detPag[0].tPag === "90" ? 0.0 : vTotalProd,
           },
         ],
       },
@@ -137,10 +128,8 @@ async function gerarNF(pedido) {
     },
   };
 
-  // salvarArquivoTeste(nf, pedido);
   return nf;
 }
-
 
 function salvarArquivoTeste(nf, pedido) {
   try {

@@ -123,8 +123,9 @@ function normalizarTexto(texto) {
 }
 
 // Detecta se o valor parece um CEP (apenas dígitos, 8 caracteres)
+// .trim() remove tabs, espaços e outros whitespace
 function pareceCEP(valor) {
-  return /^\d{5}-?\d{3}$/.test((valor || '').trim());
+  return /^\d{5}-?\d{3}$/.test((valor || '').trim().replace(/\s+/g, ''));
 }
 
 /**
@@ -161,7 +162,8 @@ async function resolverCidadePorCEP(cep) {
  * O parâmetro cepFallback é o CEP do destinatário (usado quando cidade está trocada).
  */
 async function resolverCidadeEUF(cidadeRaw, ufRaw, cepFallback) {
-  const cidadeTrimada = (cidadeRaw || '').trim();
+  // Remove tabs, espaços e outros whitespace de qualquer tipo
+  const cidadeTrimada = (cidadeRaw || '').replace(/\s+/g, ' ').trim();
 
   if (!pareceCEP(cidadeTrimada)) {
     // Caminho normal
