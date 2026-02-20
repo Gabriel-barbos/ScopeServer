@@ -17,5 +17,4 @@ router.use("/schedules", ScheduleRoutes);
 router.use("/services", ServiceRoutes);
 router.use("/reports", ReportRoutes);
 router.use("/maintenance", ZohoRoutes);
-
 export default router;
