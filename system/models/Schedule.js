@@ -17,7 +17,8 @@ const ScheduleSchema = new mongoose.Schema(
     plate: { type: String, required: false },
     vin: { type: String, required: false }, 
     model: { type: String, required: false },
-    
+    vehicleGroup: { type: String, required: false },
+
     scheduledDate: { type: Date, required: false },
     serviceType: { type: String, required: true },
     notes: { type: String },
