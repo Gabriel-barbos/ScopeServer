@@ -33,6 +33,7 @@ const ServiceSchema = new mongoose.Schema(
     protocolNumber: { type: String },
     validationNotes: { type: String },
     secondaryDevice: { type: String },
+    vehicleGroup: { type: String },
     validatedBy: { type: String },
     status: {
       type: String,

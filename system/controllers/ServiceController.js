@@ -54,6 +54,7 @@ class ServiceController {
         protocolNumber: validationData.protocolNumber,
         validationNotes: validationData.validationNotes,
         secondaryDevice: validationData.secondaryDevice,
+        vehicleGroup: schedule.vehicleGroup,
         validatedBy: validationData.validatedBy,
         validatedAt: new Date(),
         schedule: scheduleId,

@@ -36,7 +36,6 @@ class ScheduleController {
     }
   }
 
-  // ─── LIST com paginação e busca ───────────────────────────────────────────
 
   async list(req, res) {
     try {
@@ -76,7 +75,6 @@ class ScheduleController {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
 
   async findById(req, res) {
     try {
