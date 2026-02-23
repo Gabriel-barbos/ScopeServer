@@ -5,7 +5,7 @@ const ServiceSchema = new mongoose.Schema(
   {
     plate: { type: String },
     vin: { type: String, required: true },
-    model: { type: String, required: true },
+    model: { type: String, required: false },
     scheduledDate: { type: Date },
     serviceType: {
       type: String,
