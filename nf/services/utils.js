@@ -122,7 +122,8 @@ function normalizarTexto(texto) {
     .trim();
 }
 
-// Detecta se o valor parece um CEP 
+// Detecta se o valor parece um CEP (apenas dígitos, 8 caracteres)
+// .trim() remove tabs, espaços e outros whitespace
 function pareceCEP(valor) {
   return /^\d{5}-?\d{3}$/.test((valor || '').trim().replace(/\s+/g, ''));
 }
@@ -130,8 +131,7 @@ function pareceCEP(valor) {
 /**
  * Consulta o ViaCEP e retorna { cidade, uf }.
  * Lança erro se o CEP for inválido ou não encontrado.
-  */
-
+ */
 async function resolverCidadePorCEP(cep) {
   const cepLimpo = cep.replace(/\D/g, '');
 
@@ -152,8 +152,22 @@ async function resolverCidadePorCEP(cep) {
     throw new Error(`CEP "${cep}" não encontrado no ViaCEP`);
   }
 
-  console.log(` ViaCEP: CEP ${cepLimpo} → ${data.localidade}/${data.uf}`);
+  console.log(`🔍 ViaCEP: CEP ${cepLimpo} → ${data.localidade}/${data.uf}`);
   return { cidade: data.localidade, uf: data.uf };
+}
+
+// Sufixos que o Zoho às vezes cola no nome da cidade
+const SUFIXOS_ESPURIOS = [
+  /\s+ESTADO$/i,              
+  /[\s\-\/]+[A-Z]{2}$/i,     
+];
+
+function sanitizarNomeCidade(cidade) {
+  let resultado = cidade.trim();
+  for (const regex of SUFIXOS_ESPURIOS) {
+    resultado = resultado.replace(regex, '').trim();
+  }
+  return resultado;
 }
 
 /**
@@ -166,13 +180,17 @@ async function resolverCidadeEUF(cidadeRaw, ufRaw, cepFallback) {
   const cidadeTrimada = (cidadeRaw || '').replace(/\s+/g, ' ').trim();
 
   if (!pareceCEP(cidadeTrimada)) {
-    // Caminho normal
-    return { cidade: cidadeTrimada, uf: (ufRaw || '').trim() };
+    // Remove sufixos espúrios que o Zoho pode colar no nome da cidade
+    const cidadeLimpa = sanitizarNomeCidade(cidadeTrimada);
+    if (cidadeLimpa !== cidadeTrimada) {
+      console.warn(`⚠️  Sufixo removido do campo Cidade: "${cidadeTrimada}" → "${cidadeLimpa}"`);
+    }
+    return { cidade: cidadeLimpa, uf: (ufRaw || '').trim() };
   }
 
   // Cidade veio com CEP — tenta resolver pelo próprio valor ou pelo CEP do destinatário
   const cepParaConsulta = cidadeTrimada || cepFallback;
-  console.warn(`  Campo "Cidade" contém CEP ("${cidadeTrimada}"). Consultando ViaCEP...`);
+  console.warn(`⚠️  Campo "Cidade" contém CEP ("${cidadeTrimada}"). Consultando ViaCEP...`);
 
   const resultado = await resolverCidadePorCEP(cepParaConsulta);
 
