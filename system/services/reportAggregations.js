@@ -28,12 +28,8 @@ export function addClientFilter(match, clientId) {
   return match;
 }
 
+// ─── Stages reutilizáveis ─────────────────────────────────────────────────────
 
-/**
- * - Se o client tem parent → usa o parent (cliente principal)
- * - Se não tem → usa o próprio client
- * Também expõe subClientName quando há parent.
- */
 const resolveClientStages = [
   {
     $lookup: {
@@ -43,7 +39,7 @@ const resolveClientStages = [
       as: "_clientDoc",
     },
   },
-  { $unwind: { path: "$_clientDoc", preserveNullAndEmpty: false } },
+  { $unwind: { path: "$_clientDoc", preserveNullAndEmptyArrays: false } },
   {
     $addFields: {
       _effectiveClientId: {
@@ -62,14 +58,11 @@ const resolveClientStages = [
       as: "_effectiveClientDoc",
     },
   },
-  { $unwind: { path: "$_effectiveClientDoc", preserveNullAndEmpty: false } },
+  { $unwind: { path: "$_effectiveClientDoc", preserveNullAndEmptyArrays: false } },
 ];
 
-// ─── Filtro por cliente principal
+// ─── Filtro por cliente principal (inclui subclientes) ───────────────────────
 
-/**
- * Retorna filtro de match que aceita o clientId OU qualquer subcliente dele.
- */
 async function buildClientMatchIds(clientId) {
   const objectId = toObjectId(clientId);
   if (!objectId) return null;
@@ -82,6 +75,7 @@ async function buildClientMatchIds(clientId) {
   return ids;
 }
 
+// ─── Agregações ───────────────────────────────────────────────────────────────
 
 export async function servicesByType(match) {
   const Service = await getServiceModel();
@@ -120,7 +114,6 @@ export async function pendingByClient(dateFilter, clientId) {
     status: { $in: ["criado", "agendado"] },
   };
 
-  // Se filtrou por cliente, inclui subclientes dele
   if (clientId) {
     const ids = await buildClientMatchIds(clientId);
     if (ids) match.client = { $in: ids };

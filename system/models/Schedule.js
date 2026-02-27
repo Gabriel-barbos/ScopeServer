@@ -24,11 +24,9 @@ const ScheduleSchema = new mongoose.Schema(
 
     createdBy: { type: String },
 
-    // Responsável — por default igual ao createdBy, mas pode ser alterado
     responsible:      { type: String },
     responsiblePhone: { type: String },
 
-    // Condutor do veículo (exclusivo de manutenção)
     condutor: { type: String },
 
     provider:    { type: String },
