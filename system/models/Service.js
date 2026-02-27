@@ -32,7 +32,7 @@ const ServiceSchema = new mongoose.Schema(
     technician:           { type: String, required: true },
     provider:             { type: String },
     installationLocation: { type: String, required: true },
-    serviceAddress:       { type: String, required: true },
+    serviceAddress:       { type: String, required: false },
 
     odometer:        { type: Number },
     blockingEnabled: { type: Boolean, default: true },
