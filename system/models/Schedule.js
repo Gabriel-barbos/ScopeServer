@@ -24,9 +24,11 @@ const ScheduleSchema = new mongoose.Schema(
 
     createdBy: { type: String },
 
+    // Responsável — por default igual ao createdBy, mas pode ser alterado
     responsible:      { type: String },
     responsiblePhone: { type: String },
 
+    // Condutor do veículo (exclusivo de manutenção)
     condutor: { type: String },
 
     provider:    { type: String },
@@ -65,14 +67,6 @@ ScheduleSchema.index({ vin: 1 });
 ScheduleSchema.index({ plate: 1 });
 ScheduleSchema.index({ createdAt: -1 });
 ScheduleSchema.index({ maintenanceRequest: 1 });
-
-// Garante que responsible recebe o valor de createdBy quando não informado
-ScheduleSchema.pre("save", function (next) {
-  if (!this.responsible && this.createdBy) {
-    this.responsible = this.createdBy;
-  }
-  next();
-});
 
 let Schedule = null;
 

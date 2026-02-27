@@ -11,16 +11,21 @@ import {
 
 const NOT_FOUND_MSG = "Agendamento não encontrado";
 
+// Se responsible não vier no payload, usa createdBy como fallback
+function resolveResponsible(data) {
+  return data.responsible || data.createdBy || undefined;
+}
+
 class ScheduleController {
   constructor() {
-    this.create = this.create.bind(this);
-    this.list = this.list.bind(this);
-    this.findById = this.findById.bind(this);
-    this.update = this.update.bind(this);
-    this.delete = this.delete.bind(this);
+    this.create       = this.create.bind(this);
+    this.list         = this.list.bind(this);
+    this.findById     = this.findById.bind(this);
+    this.update       = this.update.bind(this);
+    this.delete       = this.delete.bind(this);
     this.updateStatus = this.updateStatus.bind(this);
-    this.bulkCreate = this.bulkCreate.bind(this);
-    this.bulkUpdate = this.bulkUpdate.bind(this);
+    this.bulkCreate   = this.bulkCreate.bind(this);
+    this.bulkUpdate   = this.bulkUpdate.bind(this);
   }
 
   async create(req, res) {
@@ -29,13 +34,16 @@ class ScheduleController {
       await getProductModel();
       const Schedule = await getScheduleModel();
 
-      const schedule = await Schedule.create(req.body);
+      const schedule = await Schedule.create({
+        ...req.body,
+        responsible: resolveResponsible(req.body),
+      });
+
       res.status(201).json(schedule);
     } catch (error) {
       handleError(res, error, 400);
     }
   }
-
 
   async list(req, res) {
     try {
@@ -75,7 +83,6 @@ class ScheduleController {
     }
   }
 
-
   async findById(req, res) {
     try {
       await getClientModel();
@@ -86,9 +93,7 @@ class ScheduleController {
         .populate("client")
         .populate("product");
 
-      if (!schedule) {
-        return res.status(404).json({ error: NOT_FOUND_MSG });
-      }
+      if (!schedule) return res.status(404).json({ error: NOT_FOUND_MSG });
       res.json(schedule);
     } catch (error) {
       handleError(res, error);
@@ -107,9 +112,7 @@ class ScheduleController {
         { new: true }
       );
 
-      if (!schedule) {
-        return res.status(404).json({ error: NOT_FOUND_MSG });
-      }
+      if (!schedule) return res.status(404).json({ error: NOT_FOUND_MSG });
       res.json(schedule);
     } catch (error) {
       handleError(res, error, 400);
@@ -119,12 +122,8 @@ class ScheduleController {
   async delete(req, res) {
     try {
       const Schedule = await getScheduleModel();
-
       const schedule = await Schedule.findByIdAndDelete(req.params.id);
-
-      if (!schedule) {
-        return res.status(404).json({ error: NOT_FOUND_MSG });
-      }
+      if (!schedule) return res.status(404).json({ error: NOT_FOUND_MSG });
       res.status(204).send();
     } catch (error) {
       handleError(res, error);
@@ -134,16 +133,12 @@ class ScheduleController {
   async updateStatus(req, res) {
     try {
       const Schedule = await getScheduleModel();
-
       const schedule = await Schedule.findByIdAndUpdate(
         req.params.id,
         { status: req.body.status },
         { new: true }
       );
-
-      if (!schedule) {
-        return res.status(404).json({ error: NOT_FOUND_MSG });
-      }
+      if (!schedule) return res.status(404).json({ error: NOT_FOUND_MSG });
       res.json(schedule);
     } catch (error) {
       handleError(res, error, 400);
@@ -162,28 +157,25 @@ class ScheduleController {
 
         return {
           ...schedule,
-          serviceType: normalizeServiceType(schedule.serviceType),
-          scheduledDate: parseDate(schedule.scheduledDate)
+          serviceType:  normalizeServiceType(schedule.serviceType),
+          scheduledDate: parseDate(schedule.scheduledDate),
+          responsible:  resolveResponsible(schedule),
         };
       });
 
       if (errors.length > 0) {
-        return res.status(400).json({
-          error: "Erros de validação",
-          details: errors.slice(0, 10)
-        });
+        return res.status(400).json({ error: "Erros de validação", details: errors.slice(0, 10) });
       }
 
       await getClientModel();
       await getProductModel();
       const Schedule = await getScheduleModel();
-
-      const created = await Schedule.insertMany(processedSchedules, { ordered: false });
+      const created  = await Schedule.insertMany(processedSchedules, { ordered: false });
 
       res.status(201).json({
         success: true,
-        count: created.length,
-        message: `${created.length} agendamento(s) criado(s) com sucesso`
+        count:   created.length,
+        message: `${created.length} agendamento(s) criado(s) com sucesso`,
       });
     } catch (error) {
       handleError(res, error);
@@ -198,10 +190,7 @@ class ScheduleController {
       const { updates, errors } = await this.#processUpdates(schedules);
 
       if (errors.length > 0) {
-        return res.status(400).json({
-          error: "Erros de validação",
-          details: errors.slice(0, 20)
-        });
+        return res.status(400).json({ error: "Erros de validação", details: errors.slice(0, 20) });
       }
 
       const { successCount, updateErrors } = await this.#executeUpdates(updates);
@@ -209,83 +198,69 @@ class ScheduleController {
       if (updateErrors.length > 0) {
         return res.status(207).json({
           success: true,
-          count: successCount,
+          count:   successCount,
           message: `${successCount} modificado(s), ${updateErrors.length} falharam`,
-          errors: updateErrors.slice(0, 10)
+          errors:  updateErrors.slice(0, 10),
         });
       }
 
       res.json({
         success: true,
-        count: successCount,
-        message: `${successCount} agendamento(s) modificado(s) com sucesso`
+        count:   successCount,
+        message: `${successCount} agendamento(s) modificado(s) com sucesso`,
       });
     } catch (error) {
       handleError(res, error);
     }
   }
 
+  // ─── Helpers privados ─────────────────────────────────────────────────────
 
   #buildFilter(query) {
     const filter = {};
-
     if (query.search) {
       const regex = new RegExp(query.search, "i");
-      filter.$or = [
-        { vin: regex },
-        { plate: regex },
-      ];
+      filter.$or = [{ vin: regex }, { plate: regex }];
     }
-
-    if (query.status) filter.status = query.status;
+    if (query.status)      filter.status      = query.status;
     if (query.serviceType) filter.serviceType = query.serviceType;
-    if (query.client) filter.client = query.client;
-
+    if (query.client)      filter.client      = query.client;
     return filter;
   }
 
   #validateSchedule(schedule, idx) {
     const errors = [];
     const requiredFields = ["vin", "model", "serviceType", "client"];
-
-    requiredFields.forEach(field => {
+    requiredFields.forEach((field) => {
       if (!schedule[field]) {
         const labels = { vin: "Chassi", model: "Modelo", serviceType: "Tipo de serviço", client: "Cliente" };
         errors.push(`Linha ${idx + 1}: ${labels[field]} obrigatório`);
       }
     });
-
     const normalizedType = normalizeServiceType(schedule.serviceType);
     if (normalizedType === "installation" && !schedule.product) {
       errors.push(`Linha ${idx + 1}: Produto obrigatório para instalação`);
     }
-
     return errors;
   }
 
   async #processUpdates(schedules) {
-    const errors = [];
+    const errors  = [];
     const updates = [];
 
     for (let i = 0; i < schedules.length; i++) {
       const schedule = schedules[i];
-
       if (!schedule.vin) {
         errors.push(`Linha ${i + 1}: Chassi obrigatório`);
         continue;
       }
-
       const Schedule = await getScheduleModel();
-      const exists = await Schedule.exists({ vin: schedule.vin });
+      const exists   = await Schedule.exists({ vin: schedule.vin });
       if (!exists) {
         errors.push(`Linha ${i + 1}: Chassi ${schedule.vin} não encontrado`);
         continue;
       }
-
-      updates.push({
-        vin: schedule.vin,
-        updateData: this.#buildUpdateData(schedule)
-      });
+      updates.push({ vin: schedule.vin, updateData: this.#buildUpdateData(schedule) });
     }
 
     return { updates, errors };
@@ -294,37 +269,33 @@ class ScheduleController {
   #buildUpdateData(schedule) {
     const updateData = {};
     const fieldMap = {
-      status: () => normalizeStatus(schedule.status),
-      client: () => schedule.client,
+      status:        () => normalizeStatus(schedule.status),
+      client:        () => schedule.client,
       scheduledDate: () => parseDate(schedule.scheduledDate),
-      model: () => schedule.model,
-      plate: () => schedule.plate,
-      serviceType: () => normalizeServiceType(schedule.serviceType),
-      product: () => schedule.product,
-      orderNumber: () => schedule.orderNumber,
-      notes: () => schedule.notes
+      model:         () => schedule.model,
+      plate:         () => schedule.plate,
+      serviceType:   () => normalizeServiceType(schedule.serviceType),
+      product:       () => schedule.product,
+      orderNumber:   () => schedule.orderNumber,
+      notes:         () => schedule.notes,
+      responsible:   () => schedule.responsible,
     };
-
     Object.entries(fieldMap).forEach(([key, getValue]) => {
       if (schedule[key]) {
         const value = getValue();
         if (value) updateData[key] = value;
       }
     });
-
     return updateData;
   }
 
   async #executeUpdates(updates) {
-    let successCount = 0;
+    let successCount  = 0;
     const updateErrors = [];
 
     const Schedule = await getScheduleModel();
-    const bulkOps = updates.map(({ vin, updateData }) => ({
-      updateOne: {
-        filter: { vin },
-        update: { $set: updateData }
-      }
+    const bulkOps  = updates.map(({ vin, updateData }) => ({
+      updateOne: { filter: { vin }, update: { $set: updateData } },
     }));
 
     try {
@@ -332,7 +303,7 @@ class ScheduleController {
       successCount = result.modifiedCount;
     } catch (error) {
       if (error.writeErrors) {
-        error.writeErrors.forEach(e => updateErrors.push(e.errmsg));
+        error.writeErrors.forEach((e) => updateErrors.push(e.errmsg));
       }
       successCount = error.result?.nModified || 0;
     }
