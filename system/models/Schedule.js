@@ -40,6 +40,7 @@ const ScheduleSchema = new mongoose.Schema(
     situation: { type: String },
     source:    { type: String, default: "manual" },
 
+    vehicleGroup: { type: String },
     product: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
