@@ -14,7 +14,6 @@ import {
 import { streamExcelExport } from "../services/reportExport.js";
 
 class ReportController {
-  // GET /api/reports
   getReportData = async (req, res) => {
     try {
       const { startDate, endDate, clientId } = req.query;
@@ -57,7 +56,6 @@ class ReportController {
     }
   };
 
-  // POST /api/reports/export
   exportData = async (req, res) => {
     try {
       const { type, includeOldData, dateFrom, dateTo } = req.body;
@@ -74,12 +72,10 @@ class ReportController {
           .json({ error: "includeOldData não é suportado para agendamentos" });
       }
 
-      // Monta nome do arquivo
       const timestamp = new Date().toISOString().slice(0, 10);
       const suffix = includeOldData ? "-com-legado" : "";
       const filename = `${type}-report${suffix}-${timestamp}.xlsx`;
 
-      // Headers ANTES de começar o stream
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -89,7 +85,6 @@ class ReportController {
         `attachment; filename=${filename}`
       );
 
-      // Stream direto para o response
       await streamExcelExport(
         {
           type,
@@ -102,11 +97,9 @@ class ReportController {
     } catch (error) {
       console.error("Erro no exportData:", error);
 
-      // Se ainda não começou a enviar, manda erro JSON
       if (!res.headersSent) {
         res.status(500).json({ error: error.message });
       } else {
-        // Se já começou o stream, só fecha
         res.end();
       }
     }

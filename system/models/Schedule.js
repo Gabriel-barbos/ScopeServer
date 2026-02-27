@@ -6,37 +6,38 @@ const ScheduleSchema = new mongoose.Schema(
     maintenanceRequest: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "MaintenanceRequest",
-      required: false 
-    },
-    
-    ticketNumber: { type: String, required: false },
-    subject: { type: String, required: false },
-    description: { type: String, required: false },
-    category: { type: String, required: false },
-    
-    plate: { type: String, required: false },
-    vin: { type: String, required: false }, 
-    model: { type: String, required: false },
-    vehicleGroup: { type: String, required: false },
-
-    scheduledDate: { type: Date, required: false },
-    serviceType: { type: String, required: true },
-    notes: { type: String },
-    createdBy: { type: String },
-    provider: { type: String, required: false },
-    orderNumber: { type: String, required: false },
-    
-    serviceAddress: { type: String, required: false }, 
-    responsible: { type: String, required: false },
-    responsiblePhone: { type: String, required: false },
-    
-    situation: { type: String, required: false },
-    source: { 
-      type: String, 
       required: false,
-      default: "manual" 
     },
-    
+
+    ticketNumber: { type: String },
+    subject:      { type: String },
+    description:  { type: String },
+    category:     { type: String },
+
+    plate: { type: String },
+    vin:   { type: String },
+    model: { type: String },
+
+    scheduledDate: { type: Date },
+    serviceType:   { type: String, required: true },
+    notes:         { type: String },
+
+    createdBy: { type: String },
+
+    responsible:      { type: String },
+    responsiblePhone: { type: String },
+
+    condutor: { type: String },
+
+    provider:    { type: String },
+    orderNumber: { type: String },
+
+    serviceAddress:  { type: String },
+    serviceLocation: { type: String },
+
+    situation: { type: String },
+    source:    { type: String, default: "manual" },
+
     product: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
@@ -44,13 +45,13 @@ const ScheduleSchema = new mongoose.Schema(
         return this.serviceType === "installation";
       },
     },
-    
+
     client: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Client",
       required: true,
     },
-    
+
     status: {
       type: String,
       enum: ["criado", "agendado", "concluido", "atrasado", "cancelado"],
@@ -65,11 +66,18 @@ ScheduleSchema.index({ plate: 1 });
 ScheduleSchema.index({ createdAt: -1 });
 ScheduleSchema.index({ maintenanceRequest: 1 });
 
+// Garante que responsible recebe o valor de createdBy quando não informado
+ScheduleSchema.pre("save", function (next) {
+  if (!this.responsible && this.createdBy) {
+    this.responsible = this.createdBy;
+  }
+  next();
+});
+
 let Schedule = null;
 
 const getScheduleModel = async () => {
   if (Schedule) return Schedule;
-
   const systemDB = await getSystemDB();
   Schedule = systemDB.models.Schedule || systemDB.model("Schedule", ScheduleSchema);
   return Schedule;

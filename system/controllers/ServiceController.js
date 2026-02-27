@@ -5,15 +5,14 @@ import getClientModel from "../models/Client.js";
 import getProductModel from "../models/Product.js";
 
 class ServiceController {
-
   constructor() {
     this.createFromValidation = this.createFromValidation.bind(this);
-    this.create = this.create.bind(this);
-    this.bulkImport = this.bulkImport.bind(this);
-    this.list = this.list.bind(this);
-    this.findById = this.findById.bind(this);
-    this.update = this.update.bind(this);
-    this.remove = this.remove.bind(this);
+    this.create               = this.create.bind(this);
+    this.bulkImport           = this.bulkImport.bind(this);
+    this.list                 = this.list.bind(this);
+    this.findById             = this.findById.bind(this);
+    this.update               = this.update.bind(this);
+    this.remove               = this.remove.bind(this);
   }
 
   async createFromValidation(req, res) {
@@ -23,7 +22,7 @@ class ServiceController {
       await getClientModel();
       await getProductModel();
       const Schedule = await getScheduleModel();
-      const Service = await getServiceModel();
+      const Service  = await getServiceModel();
 
       const schedule = await Schedule.findById(scheduleId)
         .populate("client")
@@ -34,36 +33,37 @@ class ServiceController {
       }
 
       const service = await Service.create({
-        plate: schedule.plate,
-        vin: schedule.vin,
-        model: schedule.model,
+        plate:         schedule.plate,
+        vin:           schedule.vin,
+        model:         schedule.model,
         scheduledDate: schedule.scheduledDate,
-        serviceType: schedule.serviceType,
-        notes: schedule.notes,
-        createdBy: schedule.createdBy,
-        product: schedule.product,
-        client: schedule.client,
-        provider: schedule.provider,
-        status: validationData.status,
-        deviceId: validationData.deviceId,
-        technician: validationData.technician,
+        serviceType:   schedule.serviceType,
+        notes:         schedule.notes,
+        createdBy:     schedule.createdBy,
+        product:       schedule.product,
+        client:        schedule.client,
+        provider:      schedule.provider,
+        serviceAddress: schedule.serviceAddress,
+
+        // Dados preenchidos na validação
+        status:               validationData.status,
+        deviceId:             validationData.deviceId,
+        technician:           validationData.technician,
         installationLocation: validationData.installationLocation,
-        serviceAddress: validationData.serviceAddress,
-        odometer: validationData.odometer,
-        blockingEnabled: validationData.blockingEnabled,
-        protocolNumber: validationData.protocolNumber,
-        validationNotes: validationData.validationNotes,
-        secondaryDevice: validationData.secondaryDevice,
-        vehicleGroup: schedule.vehicleGroup,
-        validatedBy: validationData.validatedBy,
-        validatedAt: new Date(),
-        schedule: scheduleId,
-        source: "validation"
+        odometer:             validationData.odometer,
+        blockingEnabled:      validationData.blockingEnabled,
+        protocolNumber:       validationData.protocolNumber,
+        validationNotes:      validationData.validationNotes,
+        secondaryDevice:      validationData.secondaryDevice,
+        validatedBy:          validationData.validatedBy,
+        validatedAt:          new Date(),
+        schedule:             scheduleId,
+        source:               "validation",
       });
 
       await Schedule.findByIdAndUpdate(scheduleId, {
-        status: "concluido",
-        service: service._id
+        status:  "concluido",
+        service: service._id,
       });
 
       return res.status(201).json(service);
@@ -81,8 +81,8 @@ class ServiceController {
 
       const service = await Service.create({
         ...req.body,
-        source: "import",
-        validatedAt: new Date()
+        source:      "import",
+        validatedAt: new Date(),
       });
 
       return res.status(201).json(service);
@@ -98,14 +98,13 @@ class ServiceController {
       if (!Array.isArray(services) || services.length === 0) {
         return res.status(400).json({ error: "Envie um array de serviços" });
       }
-
       if (services.length > 500) {
         return res.status(400).json({ error: "Limite de 500 serviços por operação" });
       }
 
       const errors = [];
       const processedServices = [];
-      const clientsCache = new Map();
+      const clientsCache  = new Map();
       const productsCache = new Map();
 
       for (let i = 0; i < services.length; i++) {
@@ -140,34 +139,31 @@ class ServiceController {
         }
 
         processedServices.push({
-          plate: service.plate,
-          vin: service.vin,
-          model: service.model,
+          plate:                service.plate,
+          vin:                  service.vin,
+          model:                service.model,
           serviceType,
-          client: clientId,
-          product: productId,
-          deviceId: service.deviceId,
-          technician: service.technician,
-          provider: service.provider,
+          client:               clientId,
+          product:              productId,
+          deviceId:             service.deviceId,
+          technician:           service.technician,
+          provider:             service.provider,
+          serviceAddress:       service.serviceAddress,
           installationLocation: service.installationLocation,
-          serviceAddress: service.serviceAddress,
-          odometer: service.odometer,
-          blockingEnabled: service.blockingEnabled ?? true,
-          protocolNumber: service.protocolNumber,
-          validationNotes: service.validationNotes,
-          secondaryDevice: service.secondaryDevice,
-          validatedBy: service.validatedBy || "Importação",
-          validatedAt: this.#parseDate(service.validatedAt) || new Date(),
-          status: this.#normalizeStatus(service.status) || "concluido",
-          source: "import"
+          odometer:             service.odometer,
+          blockingEnabled:      service.blockingEnabled ?? true,
+          protocolNumber:       service.protocolNumber,
+          validationNotes:      service.validationNotes,
+          secondaryDevice:      service.secondaryDevice,
+          validatedBy:          service.validatedBy || "Importação",
+          validatedAt:          this.#parseDate(service.validatedAt) || new Date(),
+          status:               this.#normalizeStatus(service.status) || "concluido",
+          source:               "import",
         });
       }
 
       if (errors.length > 0) {
-        return res.status(400).json({
-          error: "Erros de validação",
-          details: errors.slice(0, 20)
-        });
+        return res.status(400).json({ error: "Erros de validação", details: errors.slice(0, 20) });
       }
 
       await getClientModel();
@@ -177,28 +173,25 @@ class ServiceController {
 
       return res.status(201).json({
         success: true,
-        count: created.length,
-        message: `${created.length} serviço(s) importado(s) com sucesso`
+        count:   created.length,
+        message: `${created.length} serviço(s) importado(s) com sucesso`,
       });
-
     } catch (error) {
       if (error.name === "MongoBulkWriteError") {
         return res.status(400).json({
-          error: "Alguns registros falharam",
-          details: error.writeErrors?.map(e => e.errmsg).slice(0, 10)
+          error:   "Alguns registros falharam",
+          details: error.writeErrors?.map((e) => e.errmsg).slice(0, 10),
         });
       }
       return res.status(500).json({ error: error.message });
     }
   }
 
-  // ─── LIST unificado: Service (prioridade) + ServiceLegacy ─────────────────
-
   async list(req, res) {
     try {
       await getClientModel();
       await getProductModel();
-      const Service = await getServiceModel();
+      const Service       = await getServiceModel();
       const ServiceLegacy = await getServiceLegacyModel();
 
       const page  = Math.max(1, parseInt(req.query.page)  || 1);
@@ -207,21 +200,17 @@ class ServiceController {
 
       const filter = this.#buildFilter(req.query);
 
-      // Totais das duas collections em paralelo
       const [totalMain, totalLegacy] = await Promise.all([
         Service.countDocuments(filter),
         ServiceLegacy.countDocuments(filter),
       ]);
 
-      const total = totalMain + totalLegacy;
-
-      // Calcula fatia de cada collection para esta página
+      const total       = totalMain + totalLegacy;
       const mainSkip    = Math.min(skip, totalMain);
       const mainLimit   = Math.min(limit, Math.max(0, totalMain - mainSkip));
       const legacySkip  = Math.max(0, skip - totalMain);
       const legacyLimit = limit - mainLimit;
 
-      // Busca em paralelo — legacy só é consultado quando necessário
       const [mainData, legacyData] = await Promise.all([
         mainLimit > 0
           ? Service.find(filter)
@@ -239,7 +228,6 @@ class ServiceController {
           : [],
       ]);
 
-      // Normaliza legacy para o mesmo shape que o frontend espera
       const legacyNormalized = legacyData.map((doc) => {
         const obj = doc.toObject();
         return {
@@ -265,8 +253,6 @@ class ServiceController {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-
   async findById(req, res) {
     try {
       await getClientModel();
@@ -278,9 +264,7 @@ class ServiceController {
         .populate("product")
         .populate("schedule");
 
-      if (!service) {
-        return res.status(404).json({ error: "Serviço não encontrado" });
-      }
+      if (!service) return res.status(404).json({ error: "Serviço não encontrado" });
 
       return res.json(service);
     } catch (error) {
@@ -291,21 +275,14 @@ class ServiceController {
   async update(req, res) {
     try {
       const forbiddenFields = ["schedule", "source", "validatedAt"];
-      forbiddenFields.forEach(field => delete req.body[field]);
+      forbiddenFields.forEach((f) => delete req.body[f]);
 
       await getClientModel();
       await getProductModel();
       const Service = await getServiceModel();
 
-      const service = await Service.findByIdAndUpdate(
-        req.params.id,
-        req.body,
-        { new: true }
-      );
-
-      if (!service) {
-        return res.status(404).json({ error: "Serviço não encontrado" });
-      }
+      const service = await Service.findByIdAndUpdate(req.params.id, req.body, { new: true });
+      if (!service) return res.status(404).json({ error: "Serviço não encontrado" });
 
       return res.json(service);
     } catch (error) {
@@ -316,13 +293,8 @@ class ServiceController {
   async remove(req, res) {
     try {
       const Service = await getServiceModel();
-
       const service = await Service.findByIdAndDelete(req.params.id);
-
-      if (!service) {
-        return res.status(404).json({ error: "Serviço não encontrado" });
-      }
-
+      if (!service) return res.status(404).json({ error: "Serviço não encontrado" });
       return res.json({ message: "Serviço removido com sucesso" });
     } catch (error) {
       return res.status(500).json({ error: error.message });
@@ -333,63 +305,41 @@ class ServiceController {
 
   #buildFilter(query) {
     const filter = {};
-
     if (query.search) {
       const regex = new RegExp(query.search, "i");
-      filter.$or = [
-        { vin: regex },
-        { plate: regex },
-        { deviceId: regex },
-      ];
+      filter.$or = [{ vin: regex }, { plate: regex }, { deviceId: regex }];
     }
-
     if (query.status)      filter.status      = query.status;
     if (query.serviceType) filter.serviceType = query.serviceType;
     if (query.client)      filter.client      = query.client;
-
     return filter;
   }
 
   #validateService(service, lineNum) {
     const errors = [];
     const required = {
-      vin: "Chassi",
-      model: "Modelo",
+      vin:         "Chassi",
+      model:       "Modelo",
       serviceType: "Tipo de serviço",
-      client: "Cliente",
-      deviceId: "ID do dispositivo",
-      product: "Produto",
-      status: "Status",
+      client:      "Cliente",
+      deviceId:    "ID do dispositivo",
+      product:     "Produto",
+      status:      "Status",
     };
-
     Object.entries(required).forEach(([field, label]) => {
-      if (!service[field]) {
-        errors.push(`Linha ${lineNum}: ${label} obrigatório`);
-      }
+      if (!service[field]) errors.push(`Linha ${lineNum}: ${label} obrigatório`);
     });
-
     return { errors };
   }
 
   async #resolveClient(clientInput, cache) {
     if (cache.has(clientInput)) return cache.get(clientInput);
-
     const Client = await getClientModel();
-
     try {
       const client = await Client.findById(clientInput);
-      if (client) {
-        cache.set(clientInput, client._id);
-        return client._id;
-      }
-    } catch {
-      // não é ObjectId, segue para busca por nome
-    }
-
-    const client = await Client.findOne({
-      name: { $regex: new RegExp(clientInput, "i") }
-    });
-
+      if (client) { cache.set(clientInput, client._id); return client._id; }
+    } catch { /* não é ObjectId */ }
+    const client = await Client.findOne({ name: { $regex: new RegExp(clientInput, "i") } });
     const result = client?._id ?? null;
     cache.set(clientInput, result);
     return result;
@@ -397,23 +347,12 @@ class ServiceController {
 
   async #resolveProduct(productInput, cache) {
     if (cache.has(productInput)) return cache.get(productInput);
-
     const Product = await getProductModel();
-
     try {
       const product = await Product.findById(productInput);
-      if (product) {
-        cache.set(productInput, product._id);
-        return product._id;
-      }
-    } catch {
-      // não é ObjectId, segue para busca por nome
-    }
-
-    const product = await Product.findOne({
-      name: { $regex: new RegExp(productInput, "i") }
-    });
-
+      if (product) { cache.set(productInput, product._id); return product._id; }
+    } catch { /* não é ObjectId */ }
+    const product = await Product.findOne({ name: { $regex: new RegExp(productInput, "i") } });
     const result = product?._id ?? null;
     cache.set(productInput, result);
     return result;
@@ -440,15 +379,10 @@ class ServiceController {
   #parseDate(dateValue) {
     if (!dateValue) return null;
     if (dateValue instanceof Date) return dateValue;
-
-    if (typeof dateValue === "number") {
-      return new Date((dateValue - 25569) * 86400 * 1000);
-    }
-
+    if (typeof dateValue === "number") return new Date((dateValue - 25569) * 86400 * 1000);
     if (typeof dateValue === "string") {
       const iso = new Date(dateValue);
       if (!isNaN(iso)) return iso;
-
       const parts = dateValue.split("/");
       if (parts.length === 3) {
         const [day, month, year] = parts.map(Number);
@@ -456,7 +390,6 @@ class ServiceController {
         if (!isNaN(d)) return d;
       }
     }
-
     return null;
   }
 }

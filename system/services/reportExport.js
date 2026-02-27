@@ -3,24 +3,26 @@ import getScheduleModel from "../models/Schedule.js";
 import getServiceModel from "../models/Service.js";
 import getServiceLegacyModel from "../models/ServiceLegacy.js";
 
+// ─── Constantes ──────────────────────────────────────────
+
 const SERVICE_TYPE_MAP = {
   installation: "Instalação",
-  maintenance: "Manutenção",
-  removal: "Desinstalação",
+  maintenance:  "Manutenção",
+  removal:      "Desinstalação",
 };
 
 const STATUS_MAP = {
-  criado: "Criado",
-  agendado: "Agendado",
+  criado:    "Criado",
+  agendado:  "Agendado",
   concluido: "Concluído",
-  atrasado: "Atrasado",
+  atrasado:  "Atrasado",
   cancelado: "Cancelado",
 };
 
 const HEADER_COLOR_SERVICES  = "FF722ED1";
 const HEADER_COLOR_SCHEDULES = "FF1890FF";
-
-const BATCH_SIZE = 200;
+const LEGACY_ROW_COLOR       = "FFFFF3CD";
+const BATCH_SIZE             = 500;
 
 // ─── Helpers ─────────────────────────────────────────────
 
@@ -46,111 +48,131 @@ function styleHeaderRow(row, color) {
   row.font      = { bold: true, color: { argb: "FFFFFFFF" } };
   row.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
   row.alignment = { horizontal: "center" };
-  row.commit();
 }
 
-//colunas
+function highlightRow(row, color) {
+  row.eachCell((cell) => {
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
+  });
+}
+
+// ─── Colunas ─────────────────────────────────────────────
 
 function getServiceColumns(includeOldData) {
-  const cols = [
-    { header: "Chassi",                  key: "vin",                  width: 22 },
-    { header: "Placa",                   key: "plate",                width: 12 },
-    { header: "Modelo",                  key: "model",                width: 18 },
-    { header: "Cliente",                 key: "client",               width: 24 },
-    { header: "Equipamento",             key: "product",              width: 22 },
-    { header: "Tipo de Serviço",         key: "serviceType",          width: 16 },
-    { header: "ID Dispositivo",          key: "deviceId",             width: 18 },
-    { header: "Status",                  key: "status",               width: 14 },
-    { header: "Técnico",                 key: "technician",           width: 20 },
-    { header: "Prestador",               key: "provider",             width: 20 },
-    { header: "Local de Instalação",     key: "installationLocation", width: 24 },
-    { header: "Endereço",                key: "serviceAddress",       width: 28 },
-    { header: "Odômetro (km)",           key: "odometer",             width: 14 },
-    { header: "Bloqueio",                key: "blocking",             width: 10 },
-    { header: "Nº Protocolo",            key: "protocolNumber",       width: 16 },
-    { header: "Dispositivo Secundário",  key: "secondaryDevice",      width: 20 },
-    { header: "Validado por",            key: "validatedBy",          width: 18 },
-    { header: "Data de Validação",       key: "validatedAt",          width: 18 },
-    { header: "Criado por",              key: "createdBy",            width: 18 },
-    { header: "Data de Criação",         key: "createdAt",            width: 18 },
+  const columns = [
+    { header: "Chassi",                 key: "vin",                  width: 22 },
+    { header: "Placa",                  key: "plate",                width: 12 },
+    { header: "Modelo",                 key: "model",                width: 18 },
+    { header: "Cliente",                key: "client",               width: 24 },
+    { header: "Equipamento",            key: "product",              width: 22 },
+    { header: "Tipo de Serviço",        key: "serviceType",          width: 16 },
+    { header: "ID Dispositivo",         key: "deviceId",             width: 18 },
+    { header: "Status",                 key: "status",               width: 14 },
+    { header: "Técnico",                key: "technician",           width: 20 },
+    { header: "Prestador",              key: "provider",             width: 20 },
+    { header: "Endereço do Serviço",    key: "serviceAddress",       width: 30 },
+    { header: "Local de Instalação",    key: "installationLocation", width: 24 },
+    { header: "Odômetro (km)",          key: "odometer",             width: 14 },
+    { header: "Bloqueio",               key: "blocking",             width: 10 },
+    { header: "Nº Protocolo",           key: "protocolNumber",       width: 16 },
+    { header: "Dispositivo Secundário", key: "secondaryDevice",      width: 20 },
+    { header: "Validado por",           key: "validatedBy",          width: 18 },
+    { header: "Data de Validação",      key: "validatedAt",          width: 18 },
+    { header: "Criado por",             key: "createdBy",            width: 18 },
+    { header: "Data de Criação",        key: "createdAt",            width: 18 },
   ];
 
-  if (includeOldData) cols.push({ header: "Origem", key: "source", width: 16 });
+  if (includeOldData) {
+    columns.push({ header: "Origem", key: "source", width: 16 });
+  }
 
-  return cols;
+  return columns;
 }
 
 function getScheduleColumns() {
   return [
-    { header: "Chassi",          key: "vin",           width: 22 },
-    { header: "Placa",           key: "plate",         width: 12 },
-    { header: "Modelo",          key: "model",         width: 18 },
-    { header: "Cliente",         key: "client",        width: 24 },
-    { header: "Equipamento",     key: "product",       width: 22 },
-    { header: "Tipo de Serviço", key: "serviceType",   width: 16 },
-    { header: "Status",          key: "status",        width: 12 },
-    { header: "Prestador",       key: "provider",      width: 20 },
-    { header: "Data Agendada",   key: "scheduledDate", width: 16 },
-    { header: "Criado por",      key: "createdBy",     width: 18 },
-    { header: "Data de Criação", key: "createdAt",     width: 18 },
+    { header: "Chassi",              key: "vin",              width: 22 },
+    { header: "Placa",               key: "plate",            width: 12 },
+    { header: "Modelo",              key: "model",            width: 18 },
+    { header: "Cliente",             key: "client",           width: 24 },
+    { header: "Equipamento",         key: "product",          width: 22 },
+    { header: "Tipo de Serviço",     key: "serviceType",      width: 16 },
+    { header: "Status",              key: "status",           width: 12 },
+    { header: "Prestador",           key: "provider",         width: 20 },
+    { header: "Responsável",         key: "responsible",      width: 20 },
+    { header: "Tel. Responsável",    key: "responsiblePhone", width: 18 },
+    { header: "Condutor",            key: "condutor",         width: 20 },
+    { header: "Endereço do Serviço", key: "serviceAddress",   width: 30 },
+    { header: "Local do Serviço",    key: "serviceLocation",  width: 24 },
+    { header: "Data Agendada",       key: "scheduledDate",    width: 16 },
+    { header: "Criado por",          key: "createdBy",        width: 18 },
+    { header: "Data de Criação",     key: "createdAt",        width: 18 },
   ];
 }
 
-// ─── Row transformers ────────────────────────────────────
+// ─── Transformadores ──────────────────────────────────────
 
 function serviceToRow(s, source = "current") {
   return {
-    vin:                  s.vin                 || "",
-    plate:                s.plate               || "",
-    model:                s.model               || "",
-    client:               source === "legacy" ? (s.client  || "") : (s.client?.name  || ""),
-    product:              source === "legacy" ? (s.product || "") : (s.product?.name || ""),
-    serviceType:          SERVICE_TYPE_MAP[s.serviceType] || s.serviceType || "",
-    deviceId:             s.deviceId            || "",
-    status:               s.status              || "",
-    technician:           s.technician          || "",
-    provider:             s.provider            || "",
+    vin:                 s.vin   || "",
+    plate:               s.plate || "",
+    model:               s.model || "",
+    client:              source === "legacy" ? (s.client  || "") : (s.client?.name  || ""),
+    product:             source === "legacy" ? (s.product || "") : (s.product?.name || ""),
+    serviceType:         SERVICE_TYPE_MAP[s.serviceType] || s.serviceType || "",
+    deviceId:            s.deviceId            || "",
+    status:              s.status              || "",
+    technician:          s.technician          || "",
+    provider:            s.provider            || "",
+    serviceAddress:      s.serviceAddress      || "",
     installationLocation: s.installationLocation || "",
-    serviceAddress:       s.serviceAddress      || "",
-    odometer:             s.odometer            ?? "",
-    blocking:             s.blockingEnabled ? "Sim" : "Não",
-    protocolNumber:       s.protocolNumber      || "",
-    secondaryDevice:      s.secondaryDevice     || "",
-    validatedBy:          s.validatedBy         || "",
-    validatedAt:          formatDate(s.validatedAt),
-    createdBy:            s.createdBy           || "",
-    createdAt:            formatDate(s.createdAt),
-    source:               source === "legacy" ? "Legado" : "Atual",
+    odometer:            s.odometer ?? "",
+    blocking:            s.blockingEnabled ? "Sim" : "Não",
+    protocolNumber:      s.protocolNumber  || "",
+    secondaryDevice:     s.secondaryDevice || "",
+    validatedBy:         s.validatedBy     || "",
+    validatedAt:         formatDate(s.validatedAt),
+    createdBy:           s.createdBy       || "",
+    createdAt:           formatDate(s.createdAt),
+    source:              source === "legacy" ? "Legado" : "Atual",
   };
 }
 
 function scheduleToRow(s) {
   return {
-    vin:           s.vin                || "",
-    plate:         s.plate              || "",
-    model:         s.model              || "",
-    client:        s.client?.name       || "",
-    product:       s.product?.name      || "",
-    serviceType:   SERVICE_TYPE_MAP[s.serviceType] || s.serviceType || "",
-    status:        STATUS_MAP[s.status] || s.status || "",
-    provider:      s.provider           || "",
-    scheduledDate: formatDate(s.scheduledDate),
-    createdBy:     s.createdBy          || "",
-    createdAt:     formatDate(s.createdAt),
+    vin:             s.vin             || "",
+    plate:           s.plate           || "",
+    model:           s.model           || "",
+    client:          s.client?.name    || "",
+    product:         s.product?.name   || "",
+    serviceType:     SERVICE_TYPE_MAP[s.serviceType] || s.serviceType || "",
+    status:          STATUS_MAP[s.status] || s.status || "",
+    provider:        s.provider        || "",
+    responsible:     s.responsible     || "",
+    responsiblePhone: s.responsiblePhone || "",
+    condutor:        s.condutor        || "",
+    serviceAddress:  s.serviceAddress  || "",
+    serviceLocation: s.serviceLocation || "",
+    scheduledDate:   formatDate(s.scheduledDate),
+    createdBy:       s.createdBy       || "",
+    createdAt:       formatDate(s.createdAt),
   };
 }
 
-// ─── Cursor streaming ────────────────────────────────────
+// ─── Streaming ───────────────────────────────────────────
 
-async function streamCursorToSheet(cursor, sheet, rowTransformer, isLegacy = false) {
+async function streamCursorToSheet(cursor, sheet, rowTransformer, options = {}) {
+  const { isLegacy = false, includeOldData = false } = options;
   let count = 0;
 
   for await (const doc of cursor) {
     const row = sheet.addRow(rowTransformer(doc, isLegacy ? "legacy" : "current"));
-    row.commit(); // libera da memória imediatamente
 
-    if (++count % BATCH_SIZE === 0) {
-      await new Promise((r) => setImmediate(r));
+    if (includeOldData && isLegacy) highlightRow(row, LEGACY_ROW_COLOR);
+
+    count++;
+    if (count % BATCH_SIZE === 0) {
+      await new Promise((resolve) => setImmediate(resolve));
     }
   }
 
@@ -159,7 +181,10 @@ async function streamCursorToSheet(cursor, sheet, rowTransformer, isLegacy = fal
 
 // ─── Export principal ────────────────────────────────────
 
-export async function streamExcelExport({ type, includeOldData = false, dateFrom = null, dateTo = null }, res) {
+export async function streamExcelExport(
+  { type, includeOldData = false, dateFrom = null, dateTo = null },
+  res
+) {
   const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
     stream: res,
     useStyles: true,
@@ -179,9 +204,12 @@ export async function streamExcelExport({ type, includeOldData = false, dateFrom
 }
 
 async function streamServices(workbook, { includeOldData, dateFrom, dateTo }) {
-  const sheet = workbook.addWorksheet("Serviços");
+  const sheet   = workbook.addWorksheet("Serviços");
   sheet.columns = getServiceColumns(includeOldData);
-  styleHeaderRow(sheet.getRow(1), HEADER_COLOR_SERVICES);
+
+  const headerRow = sheet.getRow(1);
+  styleHeaderRow(headerRow, HEADER_COLOR_SERVICES);
+  headerRow.commit();
 
   const Service    = await getServiceModel();
   const dateFilter = buildDateRange(dateFrom, dateTo, "createdAt");
@@ -193,29 +221,41 @@ async function streamServices(workbook, { includeOldData, dateFrom, dateTo }) {
     .lean()
     .cursor({ batchSize: BATCH_SIZE });
 
-  const currentCount = await streamCursorToSheet(currentCursor, sheet, serviceToRow, false);
-  console.log(`✅ Serviços atuais: ${currentCount}`);
+  const currentCount = await streamCursorToSheet(currentCursor, sheet, serviceToRow, {
+    isLegacy: false,
+    includeOldData,
+  });
+
+  console.log(`✅ Serviços atuais escritos: ${currentCount}`);
 
   if (includeOldData) {
-    const ServiceLegacy     = await getServiceLegacyModel();
-    const legacyDateFilter  = buildDateRange(dateFrom, dateTo, "validatedAt");
+    const ServiceLegacy = await getServiceLegacyModel();
+    const legacyFilter  = buildDateRange(dateFrom, dateTo, "validatedAt");
 
-    const legacyCursor = ServiceLegacy.find(legacyDateFilter)
+    const legacyCursor = ServiceLegacy.find(legacyFilter)
       .sort({ validatedAt: -1 })
       .lean()
       .cursor({ batchSize: BATCH_SIZE });
 
-    const legacyCount = await streamCursorToSheet(legacyCursor, sheet, serviceToRow, true);
-    console.log(`✅ Serviços legados: ${legacyCount}`);
+    const legacyCount = await streamCursorToSheet(legacyCursor, sheet, serviceToRow, {
+      isLegacy: true,
+      includeOldData,
+    });
+
+    console.log(`✅ Serviços legados escritos: ${legacyCount}`);
+    addLegendToStream(sheet);
   }
 
   sheet.commit();
 }
 
 async function streamSchedules(workbook, { dateFrom, dateTo }) {
-  const sheet = workbook.addWorksheet("Agendamentos");
+  const sheet   = workbook.addWorksheet("Agendamentos");
   sheet.columns = getScheduleColumns();
-  styleHeaderRow(sheet.getRow(1), HEADER_COLOR_SCHEDULES);
+
+  const headerRow = sheet.getRow(1);
+  styleHeaderRow(headerRow, HEADER_COLOR_SCHEDULES);
+  headerRow.commit();
 
   const Schedule   = await getScheduleModel();
   const dateFilter = buildDateRange(dateFrom, dateTo, "createdAt");
@@ -228,7 +268,25 @@ async function streamSchedules(workbook, { dateFrom, dateTo }) {
     .cursor({ batchSize: BATCH_SIZE });
 
   const count = await streamCursorToSheet(cursor, sheet, scheduleToRow);
-  console.log(`✅ Agendamentos: ${count}`);
+  console.log(`✅ Agendamentos escritos: ${count}`);
 
   sheet.commit();
+}
+
+function addLegendToStream(sheet) {
+  sheet.addRow({}).commit();
+
+  const title = sheet.addRow({ vin: "LEGENDA:" });
+  title.getCell(1).font = { bold: true };
+  title.commit();
+
+  sheet.addRow({ vin: "⬜", plate: "Dados atuais" }).commit();
+
+  const legacyRow = sheet.addRow({ vin: "🟨", plate: "Dados legados (importação anterior)" });
+  [1, 2].forEach((col) => {
+    legacyRow.getCell(col).fill = {
+      type: "pattern", pattern: "solid", fgColor: { argb: LEGACY_ROW_COLOR },
+    };
+  });
+  legacyRow.commit();
 }

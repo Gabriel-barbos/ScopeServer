@@ -9,7 +9,6 @@ export function toObjectId(id) {
   try {
     return new ObjectId(id);
   } catch {
-    console.error("ID inválido:", id);
     return null;
   }
 }
@@ -29,7 +28,60 @@ export function addClientFilter(match, clientId) {
   return match;
 }
 
-// ─── Agregações ──────────────────────────────────────────
+
+/**
+ * - Se o client tem parent → usa o parent (cliente principal)
+ * - Se não tem → usa o próprio client
+ * Também expõe subClientName quando há parent.
+ */
+const resolveClientStages = [
+  {
+    $lookup: {
+      from: "clients",
+      localField: "client",
+      foreignField: "_id",
+      as: "_clientDoc",
+    },
+  },
+  { $unwind: { path: "$_clientDoc", preserveNullAndEmpty: false } },
+  {
+    $addFields: {
+      _effectiveClientId: {
+        $cond: [{ $ifNull: ["$_clientDoc.parent", false] }, "$_clientDoc.parent", "$_clientDoc._id"],
+      },
+      _subClientName: {
+        $cond: [{ $ifNull: ["$_clientDoc.parent", false] }, "$_clientDoc.name", null],
+      },
+    },
+  },
+  {
+    $lookup: {
+      from: "clients",
+      localField: "_effectiveClientId",
+      foreignField: "_id",
+      as: "_effectiveClientDoc",
+    },
+  },
+  { $unwind: { path: "$_effectiveClientDoc", preserveNullAndEmpty: false } },
+];
+
+// ─── Filtro por cliente principal
+
+/**
+ * Retorna filtro de match que aceita o clientId OU qualquer subcliente dele.
+ */
+async function buildClientMatchIds(clientId) {
+  const objectId = toObjectId(clientId);
+  if (!objectId) return null;
+
+  const { default: getClientModel } = await import("../models/Client.js");
+  const Client = await getClientModel();
+
+  const subclients = await Client.find({ parent: objectId }, "_id").lean();
+  const ids = [objectId, ...subclients.map((s) => s._id)];
+  return ids;
+}
+
 
 export async function servicesByType(match) {
   const Service = await getServiceModel();
@@ -68,24 +120,19 @@ export async function pendingByClient(dateFilter, clientId) {
     status: { $in: ["criado", "agendado"] },
   };
 
-  const objectId = toObjectId(clientId);
-  if (objectId) match.client = objectId;
+  // Se filtrou por cliente, inclui subclientes dele
+  if (clientId) {
+    const ids = await buildClientMatchIds(clientId);
+    if (ids) match.client = { $in: ids };
+  }
 
   const Schedule = await getScheduleModel();
   const result = await Schedule.aggregate([
     { $match: match },
-    {
-      $lookup: {
-        from: "clients",
-        localField: "client",
-        foreignField: "_id",
-        as: "clientData",
-      },
-    },
-    { $unwind: "$clientData" },
+    ...resolveClientStages,
     {
       $group: {
-        _id: { client: "$clientData.name", serviceType: "$serviceType" },
+        _id: { client: "$_effectiveClientDoc.name", serviceType: "$serviceType" },
         count: { $sum: 1 },
       },
     },
@@ -103,10 +150,7 @@ export async function pendingByClient(dateFilter, clientId) {
     installation: types.installation ?? 0,
     maintenance: types.maintenance ?? 0,
     removal: types.removal ?? 0,
-    total:
-      (types.installation ?? 0) +
-      (types.maintenance ?? 0) +
-      (types.removal ?? 0),
+    total: (types.installation ?? 0) + (types.maintenance ?? 0) + (types.removal ?? 0),
   }));
 }
 
@@ -117,8 +161,10 @@ export async function pendingByProvider(dateFilter, clientId) {
     provider: { $exists: true, $ne: "" },
   };
 
-  const objectId = toObjectId(clientId);
-  if (objectId) match.client = objectId;
+  if (clientId) {
+    const ids = await buildClientMatchIds(clientId);
+    if (ids) match.client = { $in: ids };
+  }
 
   const Schedule = await getScheduleModel();
   const result = await Schedule.aggregate([
@@ -149,9 +195,7 @@ export async function evolutionByMonth() {
   const map = new Map();
   result.forEach(({ _id, count }) => {
     const key = `${_id.year}-${String(_id.month).padStart(2, "0")}`;
-    if (!map.has(key)) {
-      map.set(key, { installation: 0, maintenance: 0, removal: 0 });
-    }
+    if (!map.has(key)) map.set(key, { installation: 0, maintenance: 0, removal: 0 });
     map.get(key)[_id.serviceType] = count;
   });
 
@@ -185,13 +229,9 @@ export async function evolutionByDay() {
   result.forEach(({ _id, count }) => {
     const monthKey = `${_id.year}-${String(_id.month).padStart(2, "0")}`;
     const dayKey = String(_id.day).padStart(2, "0");
-
     if (!monthMap.has(monthKey)) monthMap.set(monthKey, new Map());
     const dayMap = monthMap.get(monthKey);
-
-    if (!dayMap.has(dayKey)) {
-      dayMap.set(dayKey, { installation: 0, maintenance: 0, removal: 0 });
-    }
+    if (!dayMap.has(dayKey)) dayMap.set(dayKey, { installation: 0, maintenance: 0, removal: 0 });
     dayMap.get(dayKey)[_id.serviceType] = count;
   });
 
@@ -212,16 +252,13 @@ export async function evolutionByDay() {
 export async function servicesByClient() {
   const Service = await getServiceModel();
   const result = await Service.aggregate([
+    ...resolveClientStages,
     {
-      $lookup: {
-        from: "clients",
-        localField: "client",
-        foreignField: "_id",
-        as: "clientData",
+      $group: {
+        _id: "$_effectiveClientDoc.name",
+        count: { $sum: 1 },
       },
     },
-    { $unwind: "$clientData" },
-    { $group: { _id: "$clientData.name", count: { $sum: 1 } } },
     { $sort: { count: -1 } },
   ]);
 
@@ -242,18 +279,10 @@ export async function reportDaily(startDate, endDate) {
   const Service = await getServiceModel();
   const result = await Service.aggregate([
     { $match: { createdAt: { $gte: start, $lte: end } } },
-    {
-      $lookup: {
-        from: "clients",
-        localField: "client",
-        foreignField: "_id",
-        as: "clientData",
-      },
-    },
-    { $unwind: "$clientData" },
+    ...resolveClientStages,
     {
       $group: {
-        _id: { client: "$clientData.name", serviceType: "$serviceType" },
+        _id: { client: "$_effectiveClientDoc.name", serviceType: "$serviceType" },
         count: { $sum: 1 },
       },
     },
@@ -261,16 +290,11 @@ export async function reportDaily(startDate, endDate) {
   ]);
 
   const map = new Map();
-  let totalInstallation = 0,
-    totalMaintenance = 0,
-    totalRemoval = 0;
+  let totalInstallation = 0, totalMaintenance = 0, totalRemoval = 0;
 
   result.forEach(({ _id, count }) => {
-    if (!map.has(_id.client)) {
-      map.set(_id.client, { installation: 0, maintenance: 0, removal: 0 });
-    }
+    if (!map.has(_id.client)) map.set(_id.client, { installation: 0, maintenance: 0, removal: 0 });
     map.get(_id.client)[_id.serviceType] = count;
-
     if (_id.serviceType === "installation") totalInstallation += count;
     if (_id.serviceType === "maintenance") totalMaintenance += count;
     if (_id.serviceType === "removal") totalRemoval += count;

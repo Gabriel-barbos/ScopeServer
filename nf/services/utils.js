@@ -123,7 +123,6 @@ function normalizarTexto(texto) {
 }
 
 // Detecta se o valor parece um CEP (apenas dígitos, 8 caracteres)
-// .trim() remove tabs, espaços e outros whitespace
 function pareceCEP(valor) {
   return /^\d{5}-?\d{3}$/.test((valor || '').trim().replace(/\s+/g, ''));
 }

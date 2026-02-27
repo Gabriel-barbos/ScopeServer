@@ -1,88 +1,110 @@
-import express from 'express';
-import getClientModel from '../models/Client.js';
-import upload from '../config/multer.js';
+import express from "express";
+import getClientModel from "../models/Client.js";
+import upload from "../config/multer.js";
 
 const router = express.Router();
 
-// Criar cliente
-router.post('/', upload.array('image', 1), async (req, res) => { 
-    try {
+// Criar cliente ou subcliente
+router.post("/", upload.array("image", 1), async (req, res) => {
+  try {
+    const { name, description, parent } = req.body;
+    const imageUrls = req.files?.map((f) => f.path) ?? [];
 
-      const imageUrls = req.files.map(file => file.path);
-      const Client = await getClientModel();
-      const client = new Client({
-        name: req.body.name,
-        description: req.body.description,
-        type: req.body.type,
-        image: imageUrls, 
-      });
-  
-      const savedClient = await client.save();
-      res.status(201).json(savedClient);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+    const Client = await getClientModel();
 
-  // Listar todos os Clients
-router.get('/', async (req, res) => {
-    try {
-      const Client = await getClientModel();
-      const clients = await Client.find();
-      res.json(clients);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  
-  // Obter um Client por ID
-router.get('/:id', async (req, res) => {
-    try {
-      const Client = await getClientModel();
-      const client = await Client.findById(req.params.id);
-      if (!client) return res.status(404).json({ error: 'Cliente não encontrado' });
-      res.json(client);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-  
-
-// Atualizar um Client 
-router.put('/:id', upload.array('image', 5), async (req, res) => {
-    try {
-      const updatedData = {
-        name: req.body.name,
-        description: req.body.description,
-        type: req.body.type,
-      };
-  
-      // Se novas imagens forem enviadas, atualize o campo "image"
-      if (req.files && req.files.length > 0) {
-        const imageUrls = req.files.map(file => file.path);
-        updatedData.image = imageUrls;
+    if (parent) {
+      const parentExists = await Client.findById(parent);
+      if (!parentExists) {
+        return res.status(400).json({ error: "Cliente principal não encontrado" });
       }
-  
-      const Client = await getClientModel();
-      const updatedClient = await Client.findByIdAndUpdate(req.params.id, updatedData, { new: true });
-      if (!updatedClient) return res.status(404).json({ error: 'Cliente não encontrado' });
-      res.json(updatedClient);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+      if (parentExists.parent) {
+        return res.status(400).json({ error: "Um subcliente não pode ser pai de outro subcliente" });
+      }
     }
-  });
 
-  // Excluir um Client
-router.delete('/:id', async (req, res) => {
-    try {
-      const Client = await getClientModel();
-      const deletedClient = await Client.findByIdAndDelete(req.params.id);
-      if (!deletedClient) return res.status(404).json({ error: 'Client não encontrado' });
-      res.json({ message: 'Cliente excluído com sucesso!' });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+    const client = await Client.create({ name, description, image: imageUrls, parent: parent ?? null });
+    res.status(201).json(client);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Listar todos — ?type=client|subclient&parentId=xxx
+router.get("/", async (req, res) => {
+  try {
+    const { type, parentId } = req.query;
+    const Client = await getClientModel();
+
+    const filter = {};
+    if (type === "client") filter.parent = null;
+    if (type === "subclient") filter.parent = { $ne: null };
+    if (parentId) filter.parent = parentId;
+
+    const clients = await Client.find(filter).populate("parent", "name");
+    res.json(clients);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Buscar por ID com subclientes
+router.get("/:id", async (req, res) => {
+  try {
+    const Client = await getClientModel();
+    const client = await Client.findById(req.params.id).populate("parent", "name");
+    if (!client) return res.status(404).json({ error: "Cliente não encontrado" });
+
+    const subclients = await Client.find({ parent: req.params.id }, "name description image");
+    res.json({ ...client.toObject(), subclients });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Atualizar
+router.put("/:id", upload.array("image", 5), async (req, res) => {
+  try {
+    const { name, description, parent } = req.body;
+    const Client = await getClientModel();
+
+    if (parent) {
+      if (parent === req.params.id) {
+        return res.status(400).json({ error: "Um cliente não pode ser pai de si mesmo" });
+      }
+      const parentDoc = await Client.findById(parent);
+      if (!parentDoc) return res.status(400).json({ error: "Cliente principal não encontrado" });
+      if (parentDoc.parent) return res.status(400).json({ error: "Um subcliente não pode ser pai de outro subcliente" });
     }
-  });
-  
+
+    const updatedData = { name, description, parent: parent ?? null };
+    if (req.files?.length > 0) updatedData.image = req.files.map((f) => f.path);
+
+    const client = await Client.findByIdAndUpdate(req.params.id, updatedData, { new: true }).populate("parent", "name");
+    if (!client) return res.status(404).json({ error: "Cliente não encontrado" });
+
+    res.json(client);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Deletar
+router.delete("/:id", async (req, res) => {
+  try {
+    const Client = await getClientModel();
+
+    const hasSubclients = await Client.exists({ parent: req.params.id });
+    if (hasSubclients) {
+      return res.status(400).json({ error: "Remova os subclientes antes de deletar o cliente principal" });
+    }
+
+    const client = await Client.findByIdAndDelete(req.params.id);
+    if (!client) return res.status(404).json({ error: "Cliente não encontrado" });
+
+    res.json({ message: "Cliente excluído com sucesso" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

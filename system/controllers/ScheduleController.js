@@ -225,7 +225,6 @@ class ScheduleController {
     }
   }
 
-  // ─── Helpers privados ─────────────────────────────────────────────────────
 
   #buildFilter(query) {
     const filter = {};
