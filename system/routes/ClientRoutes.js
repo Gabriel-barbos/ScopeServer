@@ -22,7 +22,17 @@ router.post("/", upload.array("image", 1), async (req, res) => {
       }
     }
 
-    const client = await Client.create({ name, description, image: imageUrls, parent: parent ?? null });
+   
+    const type = parent ? "subCliente" : "Cliente";
+
+    const client = await Client.create({
+      name,
+      description,
+      image: imageUrls,
+      parent: parent ?? null,
+      type,
+    });
+
     res.status(201).json(client);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -76,10 +86,24 @@ router.put("/:id", upload.array("image", 5), async (req, res) => {
       if (parentDoc.parent) return res.status(400).json({ error: "Um subcliente não pode ser pai de outro subcliente" });
     }
 
-    const updatedData = { name, description, parent: parent ?? null };
+    // type derivado automaticamente
+    const type = parent ? "subCliente" : "Cliente";
+
+    const updatedData = {
+      name,
+      description,
+      parent: parent ?? null,
+      type, // ← adicionado
+    };
+
     if (req.files?.length > 0) updatedData.image = req.files.map((f) => f.path);
 
-    const client = await Client.findByIdAndUpdate(req.params.id, updatedData, { new: true }).populate("parent", "name");
+    const client = await Client.findByIdAndUpdate(
+      req.params.id,
+      updatedData,
+      { new: true }
+    ).populate("parent", "name");
+
     if (!client) return res.status(404).json({ error: "Cliente não encontrado" });
 
     res.json(client);
