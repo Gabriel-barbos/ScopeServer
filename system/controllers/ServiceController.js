@@ -33,7 +33,6 @@ class ServiceController {
       }
 
       const service = await Service.create({
-        plate:         schedule.plate,
         vin:           schedule.vin,
         model:         schedule.model,
         scheduledDate: schedule.scheduledDate,
@@ -46,6 +45,7 @@ class ServiceController {
         serviceAddress: schedule.serviceAddress,
 
         // Dados preenchidos na validação
+        plate:                validationData.plate,
         status:               validationData.status,
         deviceId:             validationData.deviceId,
         technician:           validationData.technician,
