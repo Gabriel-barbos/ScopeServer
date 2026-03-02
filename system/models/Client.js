@@ -6,6 +6,7 @@ const ClientSchema = new mongoose.Schema(
     name: { type: String, required: true },
     image: { type: [String], default: [] },
     description: { type: String },
+    type: { type: String, enum: ["Cliente", "subCliente"], required: false },
     parent: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Client",
