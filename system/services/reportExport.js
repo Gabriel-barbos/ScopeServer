@@ -3,7 +3,6 @@ import getScheduleModel from "../models/Schedule.js";
 import getServiceModel from "../models/Service.js";
 import getServiceLegacyModel from "../models/ServiceLegacy.js";
 
-// ─── Constantes ──────────────────────────────────────────
 
 const SERVICE_TYPE_MAP = {
   installation: "Instalação",
@@ -24,7 +23,6 @@ const HEADER_COLOR_SCHEDULES = "FF1890FF";
 const LEGACY_ROW_COLOR       = "FFFFF3CD";
 const BATCH_SIZE             = 500;
 
-// ─── Helpers ─────────────────────────────────────────────
 
 function formatDate(date) {
   if (!date) return "";
@@ -56,7 +54,6 @@ function highlightRow(row, color) {
   });
 }
 
-// Resolve nome do cliente principal e subcliente a partir do doc populado
 function resolveClientNames(clientDoc) {
   if (!clientDoc) return { clientName: "", subClientName: "" };
   if (clientDoc.parent) {
@@ -68,29 +65,28 @@ function resolveClientNames(clientDoc) {
   return { clientName: clientDoc.name || "", subClientName: "" };
 }
 
-// ─── Colunas ─────────────────────────────────────────────
 
 function getServiceColumns(includeOldData) {
   const columns = [
-    { header: "Cliente",                key: "client",               width: 24 },
-    { header: "Sub-cliente",            key: "subClient",            width: 24 },
-    { header: "Chassi",                 key: "vin",                  width: 22 },
     { header: "Placa",                  key: "plate",                width: 12 },
-    { header: "Modelo",                 key: "model",                width: 18 },
+    { header: "Chassi",                 key: "vin",                  width: 22 },
+    { header: "ID Dispositivo",         key: "deviceId",             width: 18 },
     { header: "Equipamento",            key: "product",              width: 22 },
     { header: "Tipo de Serviço",        key: "serviceType",          width: 16 },
     { header: "Status",                 key: "status",               width: 14 },
-    { header: "ID Dispositivo",         key: "deviceId",             width: 18 },
+    { header: "Data de Instalação",      key: "validatedAt",          width: 18 },
+    { header: "Cliente",                key: "client",               width: 24 },
+    { header: "Sub-cliente",            key: "subClient",            width: 24 },
     { header: "Dispositivo Secundário", key: "secondaryDevice",      width: 20 },
-    { header: "Técnico",                key: "technician",           width: 20 },
+    { header: "Modelo",                 key: "model",                width: 18 },
+    { header: "Odômetro (km)",          key: "odometer",             width: 14 },
+    { header: "Técnico",                key: "technician",           width: 20 },   
     { header: "Prestador",              key: "provider",             width: 20 },
     { header: "Endereço do Serviço",    key: "serviceAddress",       width: 30 },
     { header: "Local de Instalação",    key: "installationLocation", width: 24 },
-    { header: "Odômetro (km)",          key: "odometer",             width: 14 },
     { header: "Bloqueio",               key: "blocking",             width: 10 },
     { header: "Nº Protocolo",           key: "protocolNumber",       width: 16 },
     { header: "Validado por",           key: "validatedBy",          width: 18 },
-    { header: "Data de Validação",      key: "validatedAt",          width: 18 },
     { header: "Criado por",             key: "createdBy",            width: 18 },
     { header: "Data de Criação",        key: "createdAt",            width: 18 },
   ];
