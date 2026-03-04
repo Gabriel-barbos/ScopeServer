@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { model } from "mongoose";
 import { getSystemDB } from "../../config/databases.js";
 
 const maintenanceRequestSchema = new mongoose.Schema(
@@ -36,7 +36,8 @@ const maintenanceRequestSchema = new mongoose.Schema(
     // Array de veículos
     vehicles: [{
       plate: { type: String, required: false },
-      vin: { type: String, required: false }, // chassi
+      vin: { type: String, required: false },
+      model: { type: String, required: false },
       serviceAddress: { type: String, required: false },
       responsible: { type: String, required: false },
       responsiblePhone: { type: String, required: false }

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import getMaintenanceRequestModel from "../models/MaintenanceRequest.js";
 import getScheduleModel from "../models/Schedule.js"; 
+import { model } from "mongoose";
 
 const router = Router();
 
@@ -221,6 +222,7 @@ router.post("/:id/create-schedules", async (req, res) => {
         category: maintenance.category,
         plate: vehicle.plate,
         vin: vehicle.vin,
+        model: vehicle.model,
         serviceAddress: vehicle.serviceAddress, 
         responsible: vehicle.responsible,
         responsiblePhone: vehicle.responsiblePhone,
