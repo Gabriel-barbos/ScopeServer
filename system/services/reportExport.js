@@ -56,18 +56,32 @@ function highlightRow(row, color) {
   });
 }
 
+// Resolve nome do cliente principal e subcliente a partir do doc populado
+function resolveClientNames(clientDoc) {
+  if (!clientDoc) return { clientName: "", subClientName: "" };
+  if (clientDoc.parent) {
+    return {
+      clientName:    clientDoc.parent?.name || "",
+      subClientName: clientDoc.name || "",
+    };
+  }
+  return { clientName: clientDoc.name || "", subClientName: "" };
+}
+
 // ─── Colunas ─────────────────────────────────────────────
 
 function getServiceColumns(includeOldData) {
   const columns = [
+    { header: "Cliente",                key: "client",               width: 24 },
+    { header: "Sub-cliente",            key: "subClient",            width: 24 },
     { header: "Chassi",                 key: "vin",                  width: 22 },
     { header: "Placa",                  key: "plate",                width: 12 },
     { header: "Modelo",                 key: "model",                width: 18 },
-    { header: "Cliente",                key: "client",               width: 24 },
     { header: "Equipamento",            key: "product",              width: 22 },
     { header: "Tipo de Serviço",        key: "serviceType",          width: 16 },
-    { header: "ID Dispositivo",         key: "deviceId",             width: 18 },
     { header: "Status",                 key: "status",               width: 14 },
+    { header: "ID Dispositivo",         key: "deviceId",             width: 18 },
+    { header: "Dispositivo Secundário", key: "secondaryDevice",      width: 20 },
     { header: "Técnico",                key: "technician",           width: 20 },
     { header: "Prestador",              key: "provider",             width: 20 },
     { header: "Endereço do Serviço",    key: "serviceAddress",       width: 30 },
@@ -75,7 +89,6 @@ function getServiceColumns(includeOldData) {
     { header: "Odômetro (km)",          key: "odometer",             width: 14 },
     { header: "Bloqueio",               key: "blocking",             width: 10 },
     { header: "Nº Protocolo",           key: "protocolNumber",       width: 16 },
-    { header: "Dispositivo Secundário", key: "secondaryDevice",      width: 20 },
     { header: "Validado por",           key: "validatedBy",          width: 18 },
     { header: "Data de Validação",      key: "validatedAt",          width: 18 },
     { header: "Criado por",             key: "createdBy",            width: 18 },
@@ -91,10 +104,11 @@ function getServiceColumns(includeOldData) {
 
 function getScheduleColumns() {
   return [
+    { header: "Cliente",             key: "client",           width: 24 },
+    { header: "Sub-cliente",         key: "subClient",        width: 24 },
     { header: "Chassi",              key: "vin",              width: 22 },
     { header: "Placa",               key: "plate",            width: 12 },
     { header: "Modelo",              key: "model",            width: 18 },
-    { header: "Cliente",             key: "client",           width: 24 },
     { header: "Equipamento",         key: "product",          width: 22 },
     { header: "Tipo de Serviço",     key: "serviceType",      width: 16 },
     { header: "Status",              key: "status",           width: 12 },
@@ -104,6 +118,7 @@ function getScheduleColumns() {
     { header: "Condutor",            key: "condutor",         width: 20 },
     { header: "Endereço do Serviço", key: "serviceAddress",   width: 30 },
     { header: "Local do Serviço",    key: "serviceLocation",  width: 24 },
+    { header: "Nº Pedido",           key: "orderNumber",      width: 16 },
     { header: "Data Agendada",       key: "scheduledDate",    width: 16 },
     { header: "Criado por",          key: "createdBy",        width: 18 },
     { header: "Data de Criação",     key: "createdAt",        width: 18 },
@@ -113,37 +128,50 @@ function getScheduleColumns() {
 // ─── Transformadores ──────────────────────────────────────
 
 function serviceToRow(s, source = "current") {
+  let clientName = "";
+  let subClientName = "";
+
+  if (source === "legacy") {
+    clientName = s.client || "";
+  } else {
+    ({ clientName, subClientName } = resolveClientNames(s.client));
+  }
+
   return {
-    vin:                 s.vin   || "",
-    plate:               s.plate || "",
-    model:               s.model || "",
-    client:              source === "legacy" ? (s.client  || "") : (s.client?.name  || ""),
-    product:             source === "legacy" ? (s.product || "") : (s.product?.name || ""),
-    serviceType:         SERVICE_TYPE_MAP[s.serviceType] || s.serviceType || "",
-    deviceId:            s.deviceId            || "",
-    status:              s.status              || "",
-    technician:          s.technician          || "",
-    provider:            s.provider            || "",
-    serviceAddress:      s.serviceAddress      || "",
+    client:               clientName,
+    subClient:            subClientName,
+    vin:                  s.vin                  || "",
+    plate:                s.plate                || "",
+    model:                s.model                || "",
+    product:              source === "legacy" ? (s.product || "") : (s.product?.name || ""),
+    serviceType:          SERVICE_TYPE_MAP[s.serviceType] || s.serviceType || "",
+    status:               s.status               || "",
+    deviceId:             s.deviceId             || "",
+    secondaryDevice:      s.secondaryDevice      || "",
+    technician:           s.technician           || "",
+    provider:             s.provider             || "",
+    serviceAddress:       s.serviceAddress       || "",
     installationLocation: s.installationLocation || "",
-    odometer:            s.odometer ?? "",
-    blocking:            s.blockingEnabled ? "Sim" : "Não",
-    protocolNumber:      s.protocolNumber  || "",
-    secondaryDevice:     s.secondaryDevice || "",
-    validatedBy:         s.validatedBy     || "",
-    validatedAt:         formatDate(s.validatedAt),
-    createdBy:           s.createdBy       || "",
-    createdAt:           formatDate(s.createdAt),
-    source:              source === "legacy" ? "Legado" : "Atual",
+    odometer:             s.odometer ?? "",
+    blocking:             s.blockingEnabled ? "Sim" : "Não",
+    protocolNumber:       s.protocolNumber       || "",
+    validatedBy:          s.validatedBy          || "",
+    validatedAt:          formatDate(s.validatedAt),
+    createdBy:            s.createdBy            || "",
+    createdAt:            formatDate(s.createdAt),
+    source:               source === "legacy" ? "Legado" : "Atual",
   };
 }
 
 function scheduleToRow(s) {
+  const { clientName, subClientName } = resolveClientNames(s.client);
+
   return {
+    client:          clientName,
+    subClient:       subClientName,
     vin:             s.vin             || "",
     plate:           s.plate           || "",
     model:           s.model           || "",
-    client:          s.client?.name    || "",
     product:         s.product?.name   || "",
     serviceType:     SERVICE_TYPE_MAP[s.serviceType] || s.serviceType || "",
     status:          STATUS_MAP[s.status] || s.status || "",
@@ -153,6 +181,7 @@ function scheduleToRow(s) {
     condutor:        s.condutor        || "",
     serviceAddress:  s.serviceAddress  || "",
     serviceLocation: s.serviceLocation || "",
+    orderNumber:     s.orderNumber     || "",
     scheduledDate:   formatDate(s.scheduledDate),
     createdBy:       s.createdBy       || "",
     createdAt:       formatDate(s.createdAt),
@@ -167,9 +196,7 @@ async function streamCursorToSheet(cursor, sheet, rowTransformer, options = {}) 
 
   for await (const doc of cursor) {
     const row = sheet.addRow(rowTransformer(doc, isLegacy ? "legacy" : "current"));
-
     if (includeOldData && isLegacy) highlightRow(row, LEGACY_ROW_COLOR);
-
     count++;
     if (count % BATCH_SIZE === 0) {
       await new Promise((resolve) => setImmediate(resolve));
@@ -215,7 +242,7 @@ async function streamServices(workbook, { includeOldData, dateFrom, dateTo }) {
   const dateFilter = buildDateRange(dateFrom, dateTo, "createdAt");
 
   const currentCursor = Service.find(dateFilter)
-    .populate("client", "name")
+    .populate({ path: "client", populate: { path: "parent", select: "name" } })
     .populate("product", "name")
     .sort({ createdAt: -1 })
     .lean()
@@ -261,7 +288,7 @@ async function streamSchedules(workbook, { dateFrom, dateTo }) {
   const dateFilter = buildDateRange(dateFrom, dateTo, "createdAt");
 
   const cursor = Schedule.find(dateFilter)
-    .populate("client", "name")
+    .populate({ path: "client", populate: { path: "parent", select: "name" } })
     .populate("product", "name")
     .sort({ createdAt: -1 })
     .lean()

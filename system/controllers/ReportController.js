@@ -1,6 +1,6 @@
 import {
   buildDateFilter,
-  addClientFilter,
+  buildClientMatchIds,
   servicesByType,
   schedulesByStatus,
   pendingByClient,
@@ -18,7 +18,13 @@ class ReportController {
     try {
       const { startDate, endDate, clientId } = req.query;
       const dateFilter = buildDateFilter(req.query);
-      const matchWithClient = addClientFilter({ ...dateFilter }, clientId);
+
+      // Monta o match expandindo subclientes se necessário
+      const matchWithClient = { ...dateFilter };
+      if (clientId) {
+        const ids = await buildClientMatchIds(clientId);
+        if (ids) matchWithClient.client = { $in: ids };
+      }
 
       const [
         svcByType,
@@ -41,14 +47,14 @@ class ReportController {
       ]);
 
       res.json({
-        servicesByType: svcByType,
+        servicesByType:    svcByType,
         schedulesByStatus: schByStatus,
-        pendingByClient: pendClient,
+        pendingByClient:   pendClient,
         pendingByProvider: pendProvider,
-        evolutionByMonth: evoMonth,
-        evolutionByDay: evoDay,
-        servicesByClient: svcByClient,
-        reportDaily: daily,
+        evolutionByMonth:  evoMonth,
+        evolutionByDay:    evoDay,
+        servicesByClient:  svcByClient,
+        reportDaily:       daily,
       });
     } catch (error) {
       console.error("Erro no getReportData:", error);
@@ -61,47 +67,33 @@ class ReportController {
       const { type, includeOldData, dateFrom, dateTo } = req.body;
 
       if (!["schedules", "services"].includes(type)) {
-        return res
-          .status(400)
-          .json({ error: "Tipo inválido. Use 'schedules' ou 'services'" });
+        return res.status(400).json({ error: "Tipo inválido. Use 'schedules' ou 'services'" });
       }
 
       if (type === "schedules" && includeOldData) {
-        return res
-          .status(400)
-          .json({ error: "includeOldData não é suportado para agendamentos" });
+        return res.status(400).json({ error: "includeOldData não é suportado para agendamentos" });
       }
 
       const timestamp = new Date().toISOString().slice(0, 10);
-      const suffix = includeOldData ? "-com-legado" : "";
-      const filename = `${type}-report${suffix}-${timestamp}.xlsx`;
+      const suffix    = includeOldData ? "-com-legado" : "";
+      const filename  = `${type}-report${suffix}-${timestamp}.xlsx`;
 
-      res.setHeader(
-        "Content-Type",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      );
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename=${filename}`
-      );
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
 
       await streamExcelExport(
         {
           type,
           includeOldData: includeOldData || false,
-          dateFrom: dateFrom || null,
-          dateTo: dateTo || null,
+          dateFrom:       dateFrom || null,
+          dateTo:         dateTo   || null,
         },
         res
       );
     } catch (error) {
       console.error("Erro no exportData:", error);
-
-      if (!res.headersSent) {
-        res.status(500).json({ error: error.message });
-      } else {
-        res.end();
-      }
+      if (!res.headersSent) res.status(500).json({ error: error.message });
+      else res.end();
     }
   };
 }
