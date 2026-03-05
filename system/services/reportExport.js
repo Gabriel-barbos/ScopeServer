@@ -118,10 +118,10 @@ function getScheduleColumns() {
     { header: "Data Agendada",       key: "scheduledDate",    width: 16 },
     { header: "Criado por",          key: "createdBy",        width: 18 },
     { header: "Data de Criação",     key: "createdAt",        width: 18 },
+    { header: "Data do Pedido",      key: "orderData",        width: 18 },
   ];
 }
 
-// ─── Transformadores ──────────────────────────────────────
 
 function serviceToRow(s, source = "current") {
   let clientName = "";
@@ -155,6 +155,7 @@ function serviceToRow(s, source = "current") {
     validatedAt:          formatDate(s.validatedAt),
     createdBy:            s.createdBy            || "",
     createdAt:            formatDate(s.createdAt),
+    orderData:            formatDate(s.orderData),
     source:               source === "legacy" ? "Legado" : "Atual",
   };
 }
@@ -184,7 +185,6 @@ function scheduleToRow(s) {
   };
 }
 
-// ─── Streaming ───────────────────────────────────────────
 
 async function streamCursorToSheet(cursor, sheet, rowTransformer, options = {}) {
   const { isLegacy = false, includeOldData = false } = options;
@@ -202,7 +202,6 @@ async function streamCursorToSheet(cursor, sheet, rowTransformer, options = {}) 
   return count;
 }
 
-// ─── Export principal ────────────────────────────────────
 
 export async function streamExcelExport(
   { type, includeOldData = false, dateFrom = null, dateTo = null },
