@@ -279,7 +279,7 @@ class ScheduleController {
       orderNumber:   () => schedule.orderNumber,
       notes:         () => schedule.notes,
       responsible:   () => schedule.responsible,
-      orderDate:     () => parseDate(schedule.orderDate),
+      orderDate:     () => schedule.orderDate,
     };
     Object.entries(fieldMap).forEach(([key, getValue]) => {
       if (schedule[key]) {
