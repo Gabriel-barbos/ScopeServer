@@ -11,9 +11,22 @@ import {
 
 const NOT_FOUND_MSG = "Agendamento não encontrado";
 
-// Se responsible não vier no payload, usa createdBy como fallback
 function resolveResponsible(data) {
   return data.responsible || data.createdBy || undefined;
+}
+
+function parseBRDate(value) {
+  if (!value) return undefined
+  if (value instanceof Date) return value
+
+  if (typeof value === "string" && value.includes("/")) {
+    const [d, m, y] = value.split("/")
+    const date = new Date(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T00:00:00.000Z`)
+    return isNaN(date.getTime()) ? undefined : date
+  }
+
+  const date = new Date(value)
+  return isNaN(date.getTime()) ? undefined : date
 }
 
 class ScheduleController {
@@ -157,9 +170,10 @@ class ScheduleController {
 
         return {
           ...schedule,
-          serviceType:  normalizeServiceType(schedule.serviceType),
+          serviceType:   normalizeServiceType(schedule.serviceType),
           scheduledDate: parseDate(schedule.scheduledDate),
-          responsible:  resolveResponsible(schedule),
+          orderDate:     parseBRDate(schedule.orderDate),  // 👈 adicionado
+          responsible:   resolveResponsible(schedule),
         };
       });
 
@@ -272,6 +286,7 @@ class ScheduleController {
       status:        () => normalizeStatus(schedule.status),
       client:        () => schedule.client,
       scheduledDate: () => parseDate(schedule.scheduledDate),
+      orderDate:     () => parseBRDate(schedule.orderDate),  // 👈 corrigido
       model:         () => schedule.model,
       plate:         () => schedule.plate,
       serviceType:   () => normalizeServiceType(schedule.serviceType),
@@ -279,7 +294,6 @@ class ScheduleController {
       orderNumber:   () => schedule.orderNumber,
       notes:         () => schedule.notes,
       responsible:   () => schedule.responsible,
-      orderDate:     () => schedule.orderDate,
     };
     Object.entries(fieldMap).forEach(([key, getValue]) => {
       if (schedule[key]) {
