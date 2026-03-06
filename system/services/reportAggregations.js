@@ -22,8 +22,7 @@ export function buildDateFilter(query) {
   return { createdAt: filter };
 }
 
-// ─── Helpers de cliente ───────────────────────────────────────────────────────
-
+//helper de cliente para resolver escopo de cliente/subcliente e montar match de ids para filtros
 async function resolveClientScope(clientId) {
   const objectId = toObjectId(clientId);
   if (!objectId) return null;
@@ -53,7 +52,6 @@ export async function buildClientMatchIds(clientId) {
   return [scope.parentId, ...subclients.map((s) => new ObjectId(s._id))];
 }
 
-// ─── Stages de pipeline ───────────────────────────────────────────────────────
 
 const resolveClientStages = [
   {
@@ -86,7 +84,7 @@ const resolveClientStages = [
   { $unwind: { path: "$_effectiveClientDoc", preserveNullAndEmptyArrays: false } },
 ];
 
-// ─── Agregações de resumo ─────────────────────────────────────────────────────
+// Agregações de resumo
 
 export async function servicesByType(match) {
   const Service = await getServiceModel();
@@ -105,21 +103,27 @@ export async function servicesByType(match) {
 export async function schedulesByStatus(match) {
   const Schedule = await getScheduleModel();
   const result = await Schedule.aggregate([
-    { $match: match },
-    { $group: { _id: "$status", count: { $sum: 1 } } },
+    {
+      $match: {
+        ...match,
+        status: { $in: ["criado", "agendado"] },
+      },
+    },
+    {
+      $group: {
+        _id:   "$serviceType",
+        count: { $sum: 1 },
+      },
+    },
   ]);
 
-  const criado   = result.find((r) => r._id === "criado")?.count   ?? 0;
-  const agendado = result.find((r) => r._id === "agendado")?.count ?? 0;
-
   return {
-    pendentes:  criado + agendado,
-    cancelados: result.find((r) => r._id === "cancelado")?.count ?? 0,
-    concluidos: result.find((r) => r._id === "concluido")?.count ?? 0,
+    instalacoes:  result.find((r) => r._id === "installation")?.count ?? 0,
+    manutencoes:  result.find((r) => r._id === "maintenance")?.count  ?? 0,
   };
 }
 
-// ─── Pendências por cliente / subcliente ──────────────────────────────────────
+// Pendências por cliente / subcliente ─
 
 export async function pendingByClient(dateFilter, clientId) {
   const match = {
@@ -186,8 +190,7 @@ export async function pendingByClient(dateFilter, clientId) {
   }));
 }
 
-// ─── Pendências por prestador ─────────────────────────────────────────────────
-
+// Pendências por prestador 
 export async function pendingByProvider(dateFilter, clientId) {
   const match = {
     ...dateFilter,
@@ -210,8 +213,8 @@ export async function pendingByProvider(dateFilter, clientId) {
   return result.map(({ _id, count }) => ({ provider: _id, pending: count }));
 }
 
-// ─── Evolução ─────────────────────────────────────────────────────────────────
 
+//evolução por mês e dia (total e por tipo de serviço)
 export async function evolutionByMonth() {
   const Service = await getServiceModel();
   const result = await Service.aggregate([
@@ -285,8 +288,7 @@ export async function evolutionByDay() {
   return months;
 }
 
-// ─── Serviços por cliente ─────────────────────────────────────────────────────
-
+//serviços por cliente (total e por tipo)
 export async function servicesByClient() {
   const Service = await getServiceModel();
   const result = await Service.aggregate([
@@ -303,8 +305,7 @@ export async function servicesByClient() {
   return result.map(({ _id, count }) => ({ client: _id, total: count }));
 }
 
-// ─── Relatório diário ─────────────────────────────────────────────────────────
-
+//report diario
 export async function reportDaily(startDate, endDate) {
   let start, end;
   if (startDate && endDate) {
