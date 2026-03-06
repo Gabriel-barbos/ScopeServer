@@ -40,24 +40,24 @@ export const parseDate = (dateValue) => {
   if (!dateValue) return null;
   if (dateValue instanceof Date) return dateValue;
 
-  // Serial do Excel
   if (typeof dateValue === 'number') {
     return new Date((dateValue - 25569) * 86400 * 1000);
   }
 
-  // String ISO
   if (typeof dateValue === 'string') {
-    let date = new Date(dateValue);
-    if (!isNaN(date.getTime())) return date;
-
-    // DD/MM/YYYY
+    // DD/MM/YYYY — verificar primeiro antes do parse ISO
     const parts = dateValue.split('/');
     if (parts.length === 3) {
       const [day, month, year] = parts.map(Number);
-      date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+      const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
       if (!isNaN(date.getTime())) return date;
     }
+
+    // ISO ou outros formatos
+    const date = new Date(dateValue);
+    if (!isNaN(date.getTime())) return date;
   }
+
   return null;
 };
 
