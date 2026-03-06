@@ -54,14 +54,13 @@ export const parseDate = (dateValue) => {
     const parts = dateValue.split('/');
     if (parts.length === 3) {
       const [day, month, year] = parts.map(Number);
-      date = new Date(year, month - 1, day);
+      date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
       if (!isNaN(date.getTime())) return date;
     }
   }
   return null;
 };
 
-// Handler genérico de erros
 export const handleError = (res, error, defaultStatus = 500) => {
   if (error.name === 'MongoBulkWriteError') {
     return res.status(400).json({
@@ -72,7 +71,6 @@ export const handleError = (res, error, defaultStatus = 500) => {
   return res.status(defaultStatus).json({ error: error.message });
 };
 
-// Validação de array bulk
 export const validateBulkArray = (schedules, res) => {
   if (!Array.isArray(schedules) || schedules.length === 0) {
     res.status(400).json({ error: "Envie um array de agendamentos" });
