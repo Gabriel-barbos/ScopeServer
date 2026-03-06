@@ -21,7 +21,7 @@ function parseBRDate(value) {
 
   if (typeof value === "string" && value.includes("/")) {
     const [d, m, y] = value.split("/")
-    const date = new Date(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T00:00:00.000Z`)
+    const date = new Date(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T12:00:00.000Z`)
     return isNaN(date.getTime()) ? undefined : date
   }
 
