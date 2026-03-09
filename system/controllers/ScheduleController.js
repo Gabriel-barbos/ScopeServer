@@ -280,29 +280,39 @@ class ScheduleController {
     return { updates, errors };
   }
 
-  #buildUpdateData(schedule) {
-    const updateData = {};
-    const fieldMap = {
-      status:        () => normalizeStatus(schedule.status),
-      client:        () => schedule.client,
-      scheduledDate: () => parseDate(schedule.scheduledDate),
-      orderDate:     () => parseBRDate(schedule.orderDate),  
-      model:         () => schedule.model,
-      plate:         () => schedule.plate,
-      serviceType:   () => normalizeServiceType(schedule.serviceType),
-      product:       () => schedule.product,
-      orderNumber:   () => schedule.orderNumber,
-      notes:         () => schedule.notes,
-      responsible:   () => schedule.responsible,
-    };
-    Object.entries(fieldMap).forEach(([key, getValue]) => {
-      if (schedule[key]) {
-        const value = getValue();
-        if (value) updateData[key] = value;
-      }
-    });
-    return updateData;
+#buildUpdateData(schedule) {
+  const dateFields = new Set(["scheduledDate", "orderDate", "removalDate"]);
+  const normalizers = {
+    status:      (v) => normalizeStatus(v),
+    serviceType: (v) => normalizeServiceType(v),
+  };
+
+  const ALL_FIELDS = [
+    "status", "client", "product", "serviceType",
+    "scheduledDate", "orderDate", "removalDate",
+    "model", "plate", "vin",
+    "orderNumber", "notes", "responsible", "responsiblePhone",
+    "condutor", "provider",
+    "serviceAddress", "serviceLocation",
+    "situation", "source", "vehicleGroup",
+    "ticketNumber", "subject", "description", "category",
+  ];
+
+  const updateData = {};
+
+  for (const key of ALL_FIELDS) {
+    if (schedule[key] == null || schedule[key] === "") continue;
+
+    let value = schedule[key];
+
+    if (dateFields.has(key))       value = parseBRDate(value) ?? parseDate(value);
+    else if (normalizers[key])     value = normalizers[key](value);
+
+    if (value != null) updateData[key] = value;
   }
+
+  return updateData;
+}
 
   async #executeUpdates(updates) {
     let successCount  = 0;
