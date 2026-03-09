@@ -1,7 +1,6 @@
 import dns from "node:dns/promises";
 import dotenv from "dotenv";
 
-//configura o DNS antes  de carregar qualquer módulo que possa fazer requisições de rede
 dotenv.config();
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
@@ -26,8 +25,8 @@ const [
 
 const app = express();
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
 // Rotas
 app.use("/api/jarvis", jarvisApp);

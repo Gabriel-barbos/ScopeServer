@@ -172,7 +172,7 @@ class ScheduleController {
           ...schedule,
           serviceType:   normalizeServiceType(schedule.serviceType),
           scheduledDate: parseDate(schedule.scheduledDate),
-          orderDate:     parseBRDate(schedule.orderDate),  // 👈 adicionado
+          orderDate:     parseBRDate(schedule.orderDate),  
           responsible:   resolveResponsible(schedule),
         };
       });
