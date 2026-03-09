@@ -11,7 +11,7 @@ const ServiceSchema = new mongoose.Schema(
     serviceType: {
       type: String,
       required: true,
-      enum: ["installation", "maintenance", "removal", "reinstallation", "other"],
+      enum: ["installation", "maintenance", "removal", "reinstallation", "diagnostic"],
     },
 
     notes:     { type: String },
@@ -40,6 +40,7 @@ const ServiceSchema = new mongoose.Schema(
     validationNotes: { type: String },
     secondaryDevice: { type: String },
     validatedBy:     { type: String },
+    removalDate:     { type: Date },
 
     status:      { type: String, default: "concluido" },
     validatedAt: { type: Date, default: Date.now },
