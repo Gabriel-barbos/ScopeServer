@@ -11,7 +11,7 @@ const ServiceSchema = new mongoose.Schema(
     serviceType: {
       type: String,
       required: true,
-      enum: ["installation", "maintenance", "removal"],
+      enum: ["installation", "maintenance", "removal", "reinstallation", "other"],
     },
 
     notes:     { type: String },

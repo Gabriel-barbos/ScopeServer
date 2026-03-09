@@ -56,7 +56,7 @@ const ScheduleSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["criado", "agendado", "concluido", "atrasado", "cancelado"],
+      enum: ["criado", "agendado", "concluido", "atrasado", "cancelado", "frustrado"],
       default: "criado",
     },
   },
