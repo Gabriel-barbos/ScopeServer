@@ -38,6 +38,7 @@ const ScheduleSchema = new mongoose.Schema(
 
     situation: { type: String },
     source:    { type: String, default: "manual" },
+    removalDate:     { type: Date },
 
     vehicleGroup: { type: String },
     product: {

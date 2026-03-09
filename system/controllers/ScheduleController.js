@@ -286,7 +286,7 @@ class ScheduleController {
       status:        () => normalizeStatus(schedule.status),
       client:        () => schedule.client,
       scheduledDate: () => parseDate(schedule.scheduledDate),
-      orderDate:     () => parseBRDate(schedule.orderDate),  // 👈 corrigido
+      orderDate:     () => parseBRDate(schedule.orderDate),  
       model:         () => schedule.model,
       plate:         () => schedule.plate,
       serviceType:   () => normalizeServiceType(schedule.serviceType),

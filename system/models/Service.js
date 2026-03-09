@@ -40,7 +40,6 @@ const ServiceSchema = new mongoose.Schema(
     validationNotes: { type: String },
     secondaryDevice: { type: String },
     validatedBy:     { type: String },
-    removalDate:     { type: Date },
 
     status:      { type: String, default: "concluido" },
     validatedAt: { type: Date, default: Date.now },
