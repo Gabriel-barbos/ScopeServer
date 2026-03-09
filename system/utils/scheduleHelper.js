@@ -1,13 +1,15 @@
 export const normalizeServiceType = (type) => {
   if (!type) return null;
-  const normalized = type.toLowerCase()
+  const normalized = type
+    .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-  
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\s_-]+/g, "_");
+
   const mappings = {
     instal: "installation",
-    manut: "maintenance",
-    remo: "removal"
+    manut:  "maintenance",
+    remo:   "removal",
   };
 
   for (const [key, value] of Object.entries(mappings)) {
@@ -18,16 +20,20 @@ export const normalizeServiceType = (type) => {
 
 export const normalizeStatus = (status) => {
   if (!status) return null;
-  const normalized = status.toLowerCase()
+  const normalized = status
+    .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-  
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\s_-]+/g, "_");
+
   const mappings = {
     conclu: "concluido",
     agenda: "agendado",
-    cria: "criado",
+    cria:   "criado",
     atrasa: "atrasado",
-    cancel: "cancelado"
+    cancel: "cancelado",
+    frustr: "frustrado",
+    aguard: "aguardando_cliente",
   };
 
   for (const [key, value] of Object.entries(mappings)) {
@@ -40,13 +46,13 @@ export const parseDate = (dateValue) => {
   if (!dateValue) return null;
   if (dateValue instanceof Date) return dateValue;
 
-  if (typeof dateValue === 'number') {
+  if (typeof dateValue === "number") {
     return new Date((dateValue - 25569) * 86400 * 1000);
   }
 
-  if (typeof dateValue === 'string') {
+  if (typeof dateValue === "string") {
     // DD/MM/YYYY — verificar primeiro antes do parse ISO
-    const parts = dateValue.split('/');
+    const parts = dateValue.split("/");
     if (parts.length === 3) {
       const [day, month, year] = parts.map(Number);
       const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
@@ -62,10 +68,10 @@ export const parseDate = (dateValue) => {
 };
 
 export const handleError = (res, error, defaultStatus = 500) => {
-  if (error.name === 'MongoBulkWriteError') {
+  if (error.name === "MongoBulkWriteError") {
     return res.status(400).json({
       error: "Alguns registros falharam",
-      details: error.writeErrors?.map(e => e.errmsg).slice(0, 10)
+      details: error.writeErrors?.map((e) => e.errmsg).slice(0, 10),
     });
   }
   return res.status(defaultStatus).json({ error: error.message });
