@@ -127,11 +127,10 @@ export async function schedulesByStatus(match) {
 
 export async function pendingByClient(dateFilter, clientId) {
   const match = {
-    ...dateFilter,
     status: { $in: ["criado", "agendado"] },
   };
 
-  if (clientId) {
+   if (clientId) {
     const ids = await buildClientMatchIds(clientId);
     if (ids) match.client = { $in: ids };
   }
@@ -191,9 +190,8 @@ export async function pendingByClient(dateFilter, clientId) {
 }
 
 // Pendências por prestador 
-export async function pendingByProvider(dateFilter, clientId) {
+export async function pendingByProvider(clientId) {
   const match = {
-    ...dateFilter,
     status:   { $in: ["criado", "agendado"] },
     provider: { $exists: true, $ne: "" },
   };

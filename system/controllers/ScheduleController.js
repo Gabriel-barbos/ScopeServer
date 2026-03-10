@@ -65,7 +65,7 @@ class ScheduleController {
       const Schedule = await getScheduleModel();
 
       const page  = Math.max(1, parseInt(req.query.page)  || 1);
-      const limit = Math.min(2000, Math.max(1, parseInt(req.query.limit) || 50));
+      const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
       const skip  = (page - 1) * limit;
 
       const filter = this.#buildFilter(req.query);
@@ -229,18 +229,20 @@ class ScheduleController {
   }
 
   // ─── Helpers privados ─────────────────────────────────────────────────────
+#buildFilter(query) {
+  const filter = {};
 
-  #buildFilter(query) {
-    const filter = {};
-    if (query.search) {
-      const regex = new RegExp(query.search, "i");
-      filter.$or = [{ vin: regex }, { plate: regex }];
-    }
-    if (query.status)      filter.status      = query.status;
-    if (query.serviceType) filter.serviceType = query.serviceType;
-    if (query.client)      filter.client      = query.client;
-    return filter;
+  if (query.search) {
+    const regex = new RegExp(query.search, "i");
+    filter.$or = [{ vin: regex }, { plate: regex }];
   }
+
+  if (query.status)      filter.status      = { $in: query.status.split(",") };
+  if (query.serviceType) filter.serviceType = { $in: query.serviceType.split(",") };
+  if (query.client)      filter.client      = { $in: query.client.split(",") };
+
+  return filter;
+}
 
   #validateSchedule(schedule, idx) {
     const errors = [];

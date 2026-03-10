@@ -38,8 +38,8 @@ class ReportController {
       ] = await Promise.all([
         servicesByType(matchWithClient),
         schedulesByStatus(matchWithClient),
-        pendingByClient(dateFilter, clientId),
-        pendingByProvider(dateFilter, clientId),
+        pendingByClient(clientId),
+        pendingByProvider(clientId),  
         evolutionByMonth(),
         evolutionByDay(),
         servicesByClient(),
