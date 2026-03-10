@@ -229,20 +229,30 @@ class ScheduleController {
   }
 
   // ─── Helpers privados ─────────────────────────────────────────────────────
-#buildFilter(query) {
-  const filter = {};
+ #buildFilter(query) {
+    const filter = {};
 
-  if (query.search) {
-    const regex = new RegExp(query.search, "i");
-    filter.$or = [{ vin: regex }, { plate: regex }];
+    if (query.search) {
+      const regex = new RegExp(query.search, "i");
+      filter.$or = [{ vin: regex }, { plate: regex }];
+    }
+
+    if (query.status) {
+      const values = query.status.split(",").map((s) => s.trim()).filter(Boolean);
+      filter.status = values.length === 1 ? values[0] : { $in: values };
+    }
+
+    if (query.serviceType) {
+      const values = query.serviceType.split(",").map((s) => s.trim()).filter(Boolean);
+      filter.serviceType = values.length === 1 ? values[0] : { $in: values };
+    }
+
+    if (query.responsible) {
+      filter.responsible = new RegExp(query.responsible, "i");
+    }
+
+    return filter;
   }
-
-  if (query.status)      filter.status      = { $in: query.status.split(",") };
-  if (query.serviceType) filter.serviceType = { $in: query.serviceType.split(",") };
-  if (query.client)      filter.client      = { $in: query.client.split(",") };
-
-  return filter;
-}
 
   #validateSchedule(schedule, idx) {
     const errors = [];
