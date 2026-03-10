@@ -1,5 +1,6 @@
 export const normalizeServiceType = (type) => {
   if (!type) return null;
+
   const normalized = type
     .toLowerCase()
     .normalize("NFD")
@@ -7,15 +8,19 @@ export const normalizeServiceType = (type) => {
     .replace(/[\s_-]+/g, "_");
 
   const mappings = {
-    instal: "installation",
-    manut:  "maintenance",
-    remo:   "removal",
+    reinstal: "reinstallation", // antes de "instal"
+    instal:   "installation",
+    manut:    "maintenance",
+    remo:     "removal",
+    diagn:    "diagnostic",
+    visita:   "diagnostic",
   };
 
   for (const [key, value] of Object.entries(mappings)) {
     if (normalized.includes(key)) return value;
   }
-  return type;
+
+  return null;
 };
 
 export const normalizeStatus = (status) => {
@@ -51,7 +56,6 @@ export const parseDate = (dateValue) => {
   }
 
   if (typeof dateValue === "string") {
-    // DD/MM/YYYY — verificar primeiro antes do parse ISO
     const parts = dateValue.split("/");
     if (parts.length === 3) {
       const [day, month, year] = parts.map(Number);
@@ -59,7 +63,6 @@ export const parseDate = (dateValue) => {
       if (!isNaN(date.getTime())) return date;
     }
 
-    // ISO ou outros formatos
     const date = new Date(dateValue);
     if (!isNaN(date.getTime())) return date;
   }
