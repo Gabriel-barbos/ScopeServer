@@ -219,8 +219,9 @@ export async function evolutionByMonth() {
     {
       $group: {
         _id: {
-          year:        { $year: "$createdAt" },
-          month:       { $month: "$createdAt" },
+             year:        { $year:  { date: "$createdAt", timezone: "America/Sao_Paulo" } },
+          month:       { $month: { date: "$createdAt", timezone: "America/Sao_Paulo" } },
+          day:         { $dayOfMonth: { date: "$createdAt", timezone: "America/Sao_Paulo" } },
           serviceType: "$serviceType",
         },
         count: { $sum: 1 },
@@ -251,9 +252,9 @@ export async function evolutionByDay() {
     {
       $group: {
         _id: {
-          year:        { $year: "$createdAt" },
-          month:       { $month: "$createdAt" },
-          day:         { $dayOfMonth: "$createdAt" },
+          year:        { $year:  { date: "$createdAt", timezone: "America/Sao_Paulo" } },
+          month:       { $month: { date: "$createdAt", timezone: "America/Sao_Paulo" } },
+          day:         { $dayOfMonth: { date: "$createdAt", timezone: "America/Sao_Paulo" } },
           serviceType: "$serviceType",
         },
         count: { $sum: 1 },
