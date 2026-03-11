@@ -7,8 +7,11 @@ export const normalizeServiceType = (type) => {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[\s_-]+/g, "_");
 
+  const exact = ["installation", "maintenance", "removal", "reinstallation", "diagnostic"];
+  if (exact.includes(normalized)) return normalized;
+
   const mappings = {
-    reinstal: "reinstallation", // antes de "instal"
+    reinstal: "reinstallation",
     instal:   "installation",
     manut:    "maintenance",
     remo:     "removal",
@@ -22,7 +25,6 @@ export const normalizeServiceType = (type) => {
 
   return null;
 };
-
 export const normalizeStatus = (status) => {
   if (!status) return null;
   const normalized = status

@@ -151,13 +151,18 @@ class ScheduleController {
       if (!validateBulkArray(schedules, res)) return;
 
       const errors = [];
-      const processedSchedules = schedules.map((schedule, idx) => {
+     const processedSchedules = schedules.map((schedule, idx) => {
         const lineErrors = this.#validateSchedule(schedule, idx);
         errors.push(...lineErrors);
 
+        const serviceType = normalizeServiceType(schedule.serviceType);
+        if (!serviceType) {
+          errors.push(`Linha ${idx + 1}: Tipo de serviço inválido: "${schedule.serviceType}"`);
+        }
+
         return {
           ...schedule,
-          serviceType:   normalizeServiceType(schedule.serviceType),
+          serviceType:   serviceType,
           scheduledDate: parseDate(schedule.scheduledDate),
           orderDate:     parseDate(schedule.orderDate),
           responsible:   resolveResponsible(schedule),
