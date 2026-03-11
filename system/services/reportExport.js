@@ -118,7 +118,7 @@ function getScheduleColumns() {
     { header: "Data Agendada",       key: "scheduledDate",    width: 16 },
     { header: "Criado por",          key: "createdBy",        width: 18 },
     { header: "Data de Criação",     key: "createdAt",        width: 18 },
-    { header: "Data do Pedido",      key: "orderData",        width: 18 },
+    { header: "Data do Pedido",      key: "orderDate",        width: 18 },
   ];
 }
 
@@ -155,7 +155,7 @@ function serviceToRow(s, source = "current") {
     validatedAt:          formatDate(s.validatedAt),
     createdBy:            s.createdBy            || "",
     createdAt:            formatDate(s.createdAt),
-    orderData:            formatDate(s.orderData),
+    orderDate:            formatDate(s.orderDate),
     source:               source === "legacy" ? "Legado" : "Atual",
   };
 }
@@ -180,6 +180,7 @@ function scheduleToRow(s) {
     serviceLocation: s.serviceLocation || "",
     orderNumber:     s.orderNumber     || "",
     scheduledDate:   formatDate(s.scheduledDate),
+    orderDate:       formatDate(s.orderDate), 
     createdBy:       s.createdBy       || "",
     createdAt:       formatDate(s.createdAt),
   };

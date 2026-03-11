@@ -1,4 +1,4 @@
-import getServiceModel from "../models/Service.js";
+  import getServiceModel from "../models/Service.js";
 import getServiceLegacyModel from "../models/ServiceLegacy.js";
 import getScheduleModel from "../models/Schedule.js";
 import getClientModel from "../models/Client.js";
@@ -32,34 +32,33 @@ class ServiceController {
         return res.status(404).json({ error: "Agendamento não encontrado" });
       }
 
-      const service = await Service.create({
-        vin:           schedule.vin,
-        model:         schedule.model,
-        scheduledDate: schedule.scheduledDate,
-        serviceType:   schedule.serviceType,
-        notes:         schedule.notes,
-        createdBy:     schedule.createdBy,
-        product:       schedule.product,
-        client:        schedule.client,
-        provider:      schedule.provider,
-        serviceAddress: schedule.serviceAddress,
+const service = await Service.create({
+  vin:           schedule.vin,
+  model:         schedule.model,
+  scheduledDate: schedule.scheduledDate,
+  serviceType:   schedule.serviceType,
+  notes:         schedule.notes,
+  createdBy:     schedule.createdBy,
+  product:       validationData.product || schedule.product, 
+  client:        schedule.client,
+  provider:      schedule.provider,
+  serviceAddress: schedule.serviceAddress,
 
-        // Dados preenchidos na validação
-        plate:                validationData.plate,
-        status:               validationData.status,
-        deviceId:             validationData.deviceId,
-        technician:           validationData.technician,
-        installationLocation: validationData.installationLocation,
-        odometer:             validationData.odometer,
-        blockingEnabled:      validationData.blockingEnabled,
-        protocolNumber:       validationData.protocolNumber,
-        validationNotes:      validationData.validationNotes,
-        secondaryDevice:      validationData.secondaryDevice,
-        validatedBy:          validationData.validatedBy,
-        validatedAt:          new Date(),
-        schedule:             scheduleId,
-        source:               "validation",
-      });
+  plate:                validationData.plate || schedule.plate,  
+  status:               validationData.status,
+  deviceId:             validationData.deviceId,
+  technician:           validationData.technician,
+  installationLocation: validationData.installationLocation,
+  odometer:             validationData.odometer,
+  blockingEnabled:      validationData.blockingEnabled,
+  protocolNumber:       validationData.protocolNumber,
+  validationNotes:      validationData.validationNotes,
+  secondaryDevice:      validationData.secondaryDevice,
+  validatedBy:          validationData.validatedBy,
+  validatedAt:          new Date(),
+  schedule:             scheduleId,
+  source:               "validation",
+});
 
       await Schedule.findByIdAndUpdate(scheduleId, {
         status:  "concluido",
