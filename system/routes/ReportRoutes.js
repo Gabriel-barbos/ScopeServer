@@ -7,7 +7,6 @@ const router = Router();
 router.get("/", ReportController.getReportData);
 router.post("/export", ReportController.exportData);
 
-// Teste direto via browser/curl — sem frontend
 // GET /api/system/reports/export-test?type=services&includeOldData=true
 router.get("/export-test", async (req, res) => {
   const { type = "services", includeOldData = "false", dateFrom, dateTo } = req.query;

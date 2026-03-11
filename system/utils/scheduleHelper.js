@@ -59,14 +59,12 @@ export const parseDate = (dateValue) => {
   }
 
   if (typeof dateValue === "string") {
-    // DD/MM/YYYY
     const dmyMatch = dateValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     if (dmyMatch) {
       const [, day, month, year] = dmyMatch.map(Number);
       return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
     }
 
-    // YYYY-MM-DD (ISO enviado pelo frontend)
     const isoMatch = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (isoMatch) {
       const [, year, month, day] = isoMatch.map(Number);

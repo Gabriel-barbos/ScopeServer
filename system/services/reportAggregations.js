@@ -22,7 +22,7 @@ export function buildDateFilter(query) {
   return { createdAt: filter };
 }
 
-//helper de cliente para resolver escopo de cliente/subcliente e montar match de ids para filtros
+//helper de cliente para resolver cliente/subcliente e montar match de ids para filtros
 async function resolveClientScope(clientId) {
   const objectId = toObjectId(clientId);
   if (!objectId) return null;
@@ -39,7 +39,7 @@ async function resolveClientScope(clientId) {
   };
 }
 
-// Exportado — usado no controller para montar o match de servicesByType e schedulesByStatus
+// montar o match de servicesByType e schedulesByStatus
 export async function buildClientMatchIds(clientId) {
   const scope = await resolveClientScope(clientId);
   if (!scope) return null;
@@ -84,7 +84,6 @@ const resolveClientStages = [
   { $unwind: { path: "$_effectiveClientDoc", preserveNullAndEmptyArrays: false } },
 ];
 
-// Agregações de resumo
 
 export async function servicesByType(match) {
   const Service = await getServiceModel();
@@ -123,7 +122,7 @@ export async function schedulesByStatus(match) {
   };
 }
 
-// Pendências por cliente / subcliente ─
+// Pendências por cliente / subcliente
 
 export async function pendingByClient(dateFilter, clientId) {
   const match = {

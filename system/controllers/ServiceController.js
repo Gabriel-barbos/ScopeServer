@@ -300,8 +300,7 @@ const service = await Service.create({
     }
   }
 
-  // ─── Helpers privados ─────────────────────────────────────────────────────
-
+//helpers
   #buildFilter(query) {
     const filter = {};
     if (query.search) {

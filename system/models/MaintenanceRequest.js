@@ -43,7 +43,6 @@ const maintenanceRequestSchema = new mongoose.Schema(
       responsiblePhone: { type: String, required: false }
     }],
 
-    // Referências aos Schedules 
     schedules: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: "Schedule"
