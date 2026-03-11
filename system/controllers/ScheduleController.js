@@ -172,7 +172,7 @@ class ScheduleController {
           ...schedule,
           serviceType:   normalizeServiceType(schedule.serviceType),
           scheduledDate: parseDate(schedule.scheduledDate),
-          orderDate:     parseBRDate(schedule.orderDate),  
+          orderDate:     parseBRDate(schedule.orderDate),
           responsible:   resolveResponsible(schedule),
         };
       });
@@ -229,7 +229,8 @@ class ScheduleController {
   }
 
   // ─── Helpers privados ─────────────────────────────────────────────────────
- #buildFilter(query) {
+
+  #buildFilter(query) {
     const filter = {};
 
     if (query.search) {
@@ -245,6 +246,11 @@ class ScheduleController {
     if (query.serviceType) {
       const values = query.serviceType.split(",").map((s) => s.trim()).filter(Boolean);
       filter.serviceType = values.length === 1 ? values[0] : { $in: values };
+    }
+
+    if (query.client) {
+      const values = query.client.split(",").map((s) => s.trim()).filter(Boolean);
+      filter.client = values.length === 1 ? values[0] : { $in: values };
     }
 
     if (query.responsible) {
@@ -292,39 +298,39 @@ class ScheduleController {
     return { updates, errors };
   }
 
-#buildUpdateData(schedule) {
-  const dateFields = new Set(["scheduledDate", "orderDate", "removalDate"]);
-  const normalizers = {
-    status:      (v) => normalizeStatus(v),
-    serviceType: (v) => normalizeServiceType(v),
-  };
+  #buildUpdateData(schedule) {
+    const dateFields = new Set(["scheduledDate", "orderDate", "removalDate"]);
+    const normalizers = {
+      status:      (v) => normalizeStatus(v),
+      serviceType: (v) => normalizeServiceType(v),
+    };
 
-  const ALL_FIELDS = [
-    "status", "client", "product", "serviceType",
-    "scheduledDate", "orderDate", "removalDate",
-    "model", "plate", "vin",
-    "orderNumber", "notes", "responsible", "responsiblePhone",
-    "condutor", "provider",
-    "serviceAddress", "serviceLocation",
-    "situation", "source", "vehicleGroup",
-    "ticketNumber", "subject", "description", "category",
-  ];
+    const ALL_FIELDS = [
+      "status", "client", "product", "serviceType",
+      "scheduledDate", "orderDate", "removalDate",
+      "model", "plate", "vin",
+      "orderNumber", "notes", "responsible", "responsiblePhone",
+      "condutor", "provider",
+      "serviceAddress", "serviceLocation",
+      "situation", "source", "vehicleGroup",
+      "ticketNumber", "subject", "description", "category",
+    ];
 
-  const updateData = {};
+    const updateData = {};
 
-  for (const key of ALL_FIELDS) {
-    if (schedule[key] == null || schedule[key] === "") continue;
+    for (const key of ALL_FIELDS) {
+      if (schedule[key] == null || schedule[key] === "") continue;
 
-    let value = schedule[key];
+      let value = schedule[key];
 
-    if (dateFields.has(key))       value = parseBRDate(value) ?? parseDate(value);
-    else if (normalizers[key])     value = normalizers[key](value);
+      if (dateFields.has(key))       value = parseBRDate(value) ?? parseDate(value);
+      else if (normalizers[key])     value = normalizers[key](value);
 
-    if (value != null) updateData[key] = value;
+      if (value != null) updateData[key] = value;
+    }
+
+    return updateData;
   }
-
-  return updateData;
-}
 
   async #executeUpdates(updates) {
     let successCount  = 0;
