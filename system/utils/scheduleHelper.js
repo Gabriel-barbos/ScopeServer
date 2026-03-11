@@ -52,17 +52,27 @@ export const parseDate = (dateValue) => {
   if (dateValue instanceof Date) return dateValue;
 
   if (typeof dateValue === "number") {
-    return new Date((dateValue - 25569) * 86400 * 1000);
+    const days = Math.round(dateValue) - 25569;
+    return new Date(Date.UTC(1970, 0, 1 + days, 12, 0, 0));
   }
 
   if (typeof dateValue === "string") {
-    const parts = dateValue.split("/");
-    if (parts.length === 3) {
-      const [day, month, year] = parts.map(Number);
+    // DD/MM/YYYY
+    const dmyMatch = dateValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dmyMatch) {
+      const [, day, month, year] = dmyMatch.map(Number);
       const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
       if (!isNaN(date.getTime())) return date;
     }
 
+    // YYYY-MM-DD (ISO enviado pelo frontend)
+    const isoMatch = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch.map(Number);
+      return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+    }
+
+    // fallback
     const date = new Date(dateValue);
     if (!isNaN(date.getTime())) return date;
   }
