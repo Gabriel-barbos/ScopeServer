@@ -61,8 +61,7 @@ export const parseDate = (dateValue) => {
     const dmyMatch = dateValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     if (dmyMatch) {
       const [, day, month, year] = dmyMatch.map(Number);
-      const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-      if (!isNaN(date.getTime())) return date;
+      return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
     }
 
     // YYYY-MM-DD (ISO enviado pelo frontend)
@@ -72,7 +71,6 @@ export const parseDate = (dateValue) => {
       return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
     }
 
-    // fallback
     const date = new Date(dateValue);
     if (!isNaN(date.getTime())) return date;
   }

@@ -15,19 +15,6 @@ function resolveResponsible(data) {
   return data.responsible || data.createdBy || undefined;
 }
 
-function parseBRDate(value) {
-  if (!value) return undefined
-  if (value instanceof Date) return value
-
-  if (typeof value === "string" && value.includes("/")) {
-    const [d, m, y] = value.split("/")
-    const date = new Date(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T12:00:00.000Z`)
-    return isNaN(date.getTime()) ? undefined : date
-  }
-
-  const date = new Date(value)
-  return isNaN(date.getTime()) ? undefined : date
-}
 
 class ScheduleController {
   constructor() {
@@ -172,7 +159,7 @@ class ScheduleController {
           ...schedule,
           serviceType:   normalizeServiceType(schedule.serviceType),
           scheduledDate: parseDate(schedule.scheduledDate),
-          orderDate:     parseBRDate(schedule.orderDate),
+          orderDate:     parseDate(schedule.orderDate),
           responsible:   resolveResponsible(schedule),
         };
       });
