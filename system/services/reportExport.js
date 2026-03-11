@@ -89,6 +89,8 @@ function getServiceColumns(includeOldData) {
     { header: "Validado por",           key: "validatedBy",          width: 18 },
     { header: "Criado por",             key: "createdBy",            width: 18 },
     { header: "Data de Criação",        key: "createdAt",            width: 18 },
+    { header: "Observações",            key: "notes",                width: 18 },
+    { header: "Notas de Validação",     key: "validationNotes",      width: 18 },
   ];
 
   if (includeOldData) {
@@ -157,6 +159,8 @@ function serviceToRow(s, source = "current") {
     createdAt:            formatDate(s.createdAt),
     orderDate:            formatDate(s.orderDate),
     source:               source === "legacy" ? "Legado" : "Atual",
+    notes:              s.notes                || "",
+    validationNotes:     s.validationNotes      || "",
   };
 }
 
