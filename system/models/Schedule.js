@@ -36,6 +36,7 @@ const ScheduleSchema = new mongoose.Schema(
     serviceLocation: { type: String },
     orderDate:       { type: Date },
 
+    reason: { type: String },
     situation: { type: String },
     source:    { type: String, default: "manual" },
     removalDate:     { type: Date },

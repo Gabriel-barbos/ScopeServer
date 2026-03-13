@@ -74,7 +74,8 @@ function getServiceColumns(includeOldData) {
     { header: "Equipamento",            key: "product",              width: 22 },
     { header: "Tipo de Serviço",        key: "serviceType",          width: 16 },
     { header: "Status",                 key: "status",               width: 14 },
-    { header: "Data de Instalação",      key: "validatedAt",          width: 18 },
+    { header: "Data da Solicitação",    key: "orderDate",            width: 18 },
+    { header: "Data de Instalação",     key: "validatedAt",          width: 18 },
     { header: "Cliente",                key: "client",               width: 24 },
     { header: "Sub-cliente",            key: "subClient",            width: 24 },
     { header: "Dispositivo Secundário", key: "secondaryDevice",      width: 20 },
@@ -91,6 +92,8 @@ function getServiceColumns(includeOldData) {
     { header: "Data de Criação",        key: "createdAt",            width: 18 },
     { header: "Observações",            key: "notes",                width: 18 },
     { header: "Notas de Validação",     key: "validationNotes",      width: 18 },
+    { header: "Motivo",                 key: "reason",               width: 18 },
+
   ];
 
   if (includeOldData) {
@@ -161,6 +164,7 @@ function serviceToRow(s, source = "current") {
     source:               source === "legacy" ? "Legado" : "Atual",
     notes:              s.notes                || "",
     validationNotes:     s.validationNotes      || "",
+    orderDate:           formatDate(s.orderDate), 
   };
 }
 
@@ -183,6 +187,7 @@ function scheduleToRow(s) {
     serviceAddress:  s.serviceAddress  || "",
     serviceLocation: s.serviceLocation || "",
     orderNumber:     s.orderNumber     || "",
+    reason:          s.reason          || "",
     scheduledDate:   formatDate(s.scheduledDate),
     orderDate:       formatDate(s.orderDate), 
     createdBy:       s.createdBy       || "",

@@ -220,7 +220,7 @@ class ScheduleController {
     }
   }
 
-  // ─── Helpers privados ─────────────────────────────────────────────────────
+  // Helpers privados 
 
   #buildFilter(query) {
     const filter = {};
@@ -303,7 +303,7 @@ class ScheduleController {
       "model", "plate", "vin",
       "orderNumber", "notes", "responsible", "responsiblePhone",
       "condutor", "provider",
-      "serviceAddress", "serviceLocation",
+      "serviceAddress", "serviceLocation","reason",
       "situation", "source", "vehicleGroup",
       "ticketNumber", "subject", "description", "category",
     ];
