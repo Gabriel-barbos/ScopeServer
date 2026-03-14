@@ -99,3 +99,17 @@ export const validateBulkArray = (schedules, res) => {
   }
   return true;
 };
+
+// Status que indicam que o agendamento ainda está em aberto (bloqueiam novo cadastro)
+export const ACTIVE_STATUSES = ["criado", "agendado", "atrasado", "aguardando_cliente"];
+
+/**
+ * Verifica se já existe um agendamento ativo para o VIN informado.
+ * Retorna o documento encontrado ou null.
+ */
+export const checkDuplicateVin = async (vin, Schedule) => {
+  if (!vin) return null;
+  return Schedule.findOne({ vin, status: { $in: ACTIVE_STATUSES } })
+    .select("_id status scheduledDate")
+    .lean();
+};

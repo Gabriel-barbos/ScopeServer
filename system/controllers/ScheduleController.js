@@ -6,7 +6,8 @@ import {
   normalizeStatus,
   parseDate,
   handleError,
-  validateBulkArray
+  validateBulkArray,
+  checkDuplicateVin,
 } from "../utils/scheduleHelper.js";
 
 const NOT_FOUND_MSG = "Agendamento não encontrado";
@@ -33,6 +34,15 @@ class ScheduleController {
       await getClientModel();
       await getProductModel();
       const Schedule = await getScheduleModel();
+
+      // Verifica duplicata por chassi antes de criar
+      const duplicate = await checkDuplicateVin(req.body.vin, Schedule);
+      if (duplicate) {
+        return res.status(409).json({
+          error: `Chassi "${req.body.vin}" já possui um agendamento ativo (status: ${duplicate.status})`,
+          activeScheduleId: duplicate._id,
+        });
+      }
 
       const schedule = await Schedule.create({
         ...req.body,
@@ -151,7 +161,7 @@ class ScheduleController {
       if (!validateBulkArray(schedules, res)) return;
 
       const errors = [];
-     const processedSchedules = schedules.map((schedule, idx) => {
+      const processedSchedules = schedules.map((schedule, idx) => {
         const lineErrors = this.#validateSchedule(schedule, idx);
         errors.push(...lineErrors);
 
@@ -166,6 +176,7 @@ class ScheduleController {
           scheduledDate: parseDate(schedule.scheduledDate),
           orderDate:     parseDate(schedule.orderDate),
           responsible:   resolveResponsible(schedule),
+          _originalIndex: idx,
         };
       });
 
@@ -176,12 +187,41 @@ class ScheduleController {
       await getClientModel();
       await getProductModel();
       const Schedule = await getScheduleModel();
-      const created  = await Schedule.insertMany(processedSchedules, { ordered: false });
 
-      res.status(201).json({
-        success: true,
-        count:   created.length,
-        message: `${created.length} agendamento(s) criado(s) com sucesso`,
+      // Verifica duplicatas por chassi em paralelo
+      const duplicateChecks = await Promise.all(
+        processedSchedules.map((s) => checkDuplicateVin(s.vin, Schedule))
+      );
+
+      const valid    = [];
+      const rejected = [];
+
+      processedSchedules.forEach((s, i) => {
+        const { _originalIndex, ...scheduleData } = s;
+        if (duplicateChecks[i]) {
+          rejected.push({
+            line:   _originalIndex + 1,
+            vin:    s.vin,
+            reason: `Chassi já possui agendamento ativo (status: ${duplicateChecks[i].status})`,
+          });
+        } else {
+          valid.push(scheduleData);
+        }
+      });
+
+      const created = valid.length > 0
+        ? await Schedule.insertMany(valid, { ordered: false })
+        : [];
+
+      const statusCode = rejected.length > 0 ? 207 : 201;
+      res.status(statusCode).json({
+        success:         true,
+        created:         created.length,
+        rejected:        rejected.length,
+        message:         `${created.length} agendamento(s) criado(s)${
+          rejected.length > 0 ? `, ${rejected.length} rejeitado(s) por duplicata` : ""
+        }`,
+        ...(rejected.length > 0 && { rejectedDetails: rejected }),
       });
     } catch (error) {
       handleError(res, error);
