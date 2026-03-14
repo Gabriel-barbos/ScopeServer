@@ -18,6 +18,22 @@ const STATUS_MAP = {
   cancelado: "Cancelado",
 };
 
+const REASON_MAP = {
+  dispositivo_sem_comunicacao: "Dispositivo sem comunicação",
+  dispositivo_sem_registro_de_viagem: "Dispositivo sem registro de viagem",
+  dispositivo_sem_dados_CAN: "Dispositivo sem dados CAN",
+  instalacao_sem_pos_chave: "Instalação sem pos chave",
+  instalacao_inadequada: "Instalação inadequada",
+  problema_acessorio: "Problema acessório",
+  problema_bateria: "Problema bateria",
+  substituicao_tecnologia: "Substituição tecnologia",
+  upgrade_produto: "Upgrade produto",
+  recall_dispositivo: "Recall dispositivo",
+  recall_chicote: "Recall chicote",
+  outros: "Outros",
+
+};
+
 const HEADER_COLOR_SERVICES  = "FF722ED1";
 const HEADER_COLOR_SCHEDULES = "FF1890FF";
 const LEGACY_ROW_COLOR       = "FFFFF3CD";
@@ -124,6 +140,7 @@ function getScheduleColumns() {
     { header: "Criado por",          key: "createdBy",        width: 18 },
     { header: "Data de Criação",     key: "createdAt",        width: 18 },
     { header: "Data do Pedido",      key: "orderDate",        width: 18 },
+    { header: "Motivo",              key: "reason",           width: 18 },
   ];
 }
 
@@ -164,7 +181,8 @@ function serviceToRow(s, source = "current") {
     source:               source === "legacy" ? "Legado" : "Atual",
     notes:              s.notes                || "",
     validationNotes:     s.validationNotes      || "",
-    orderDate:           formatDate(s.orderDate), 
+    orderDate:           formatDate(s.orderDate),
+    reason:              REASON_MAP[s.reason] || s.reason || "", 
   };
 }
 
@@ -192,6 +210,7 @@ function scheduleToRow(s) {
     orderDate:       formatDate(s.orderDate), 
     createdBy:       s.createdBy       || "",
     createdAt:       formatDate(s.createdAt),
+    reason:          REASON_MAP[s.reason] || s.reason || "",
   };
 }
 
