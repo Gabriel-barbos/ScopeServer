@@ -40,11 +40,13 @@ const LEGACY_ROW_COLOR       = "FFFFF3CD";
 const BATCH_SIZE             = 500;
 
 
-function formatDate(date) {
-  if (!date) return "";
+function toDate(date) {
+  if (!date) return null;
   const d = new Date(date);
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+  return isNaN(d.getTime()) ? null : d;
 }
+
+const DATE_FMT = "dd/mm/yyyy";
 
 function buildDateRange(dateFrom, dateTo, dateField = "createdAt") {
   if (!dateFrom && !dateTo) return {};
@@ -90,8 +92,8 @@ function getServiceColumns(includeOldData) {
     { header: "Equipamento",            key: "product",              width: 22 },
     { header: "Tipo de Serviço",        key: "serviceType",          width: 16 },
     { header: "Status",                 key: "status",               width: 14 },
-    { header: "Data da Solicitação",    key: "orderDate",            width: 18 },
-    { header: "Data de Instalação",     key: "validatedAt",          width: 18 },
+    { header: "Data da Solicitação",    key: "orderDate",            width: 18, numFmt: DATE_FMT },
+    { header: "Data de Instalação",     key: "validatedAt",          width: 18, numFmt: DATE_FMT },
     { header: "Cliente",                key: "client",               width: 24 },
     { header: "Sub-cliente",            key: "subClient",            width: 24 },
     { header: "Dispositivo Secundário", key: "secondaryDevice",      width: 20 },
@@ -105,7 +107,7 @@ function getServiceColumns(includeOldData) {
     { header: "Nº Protocolo",           key: "protocolNumber",       width: 16 },
     { header: "Validado por",           key: "validatedBy",          width: 18 },
     { header: "Criado por",             key: "createdBy",            width: 18 },
-    { header: "Data de Criação",        key: "createdAt",            width: 18 },
+    { header: "Data de Criação",        key: "createdAt",            width: 18, numFmt: DATE_FMT },
     { header: "Observações",            key: "notes",                width: 18 },
     { header: "Notas de Validação",     key: "validationNotes",      width: 18 },
     { header: "Motivo",                 key: "reason",               width: 18 },
@@ -136,10 +138,10 @@ function getScheduleColumns() {
     { header: "Endereço do Serviço", key: "serviceAddress",   width: 30 },
     { header: "Local do Serviço",    key: "serviceLocation",  width: 24 },
     { header: "Nº Pedido",           key: "orderNumber",      width: 16 },
-    { header: "Data Agendada",       key: "scheduledDate",    width: 16 },
+    { header: "Data Agendada",       key: "scheduledDate",    width: 16, numFmt: DATE_FMT },
     { header: "Criado por",          key: "createdBy",        width: 18 },
-    { header: "Data de Criação",     key: "createdAt",        width: 18 },
-    { header: "Data do Pedido",      key: "orderDate",        width: 18 },
+    { header: "Data de Criação",     key: "createdAt",        width: 18, numFmt: DATE_FMT },
+    { header: "Data do Pedido",      key: "orderDate",        width: 18, numFmt: DATE_FMT },
     { header: "Motivo",              key: "reason",           width: 18 },
   ];
 }
@@ -174,10 +176,10 @@ function serviceToRow(s, source = "current") {
     blocking:             s.blockingEnabled ? "Sim" : "Não",
     protocolNumber:       s.protocolNumber       || "",
     validatedBy:          s.validatedBy          || "",
-    validatedAt:          formatDate(s.validatedAt),
+    validatedAt:          toDate(s.validatedAt),
     createdBy:            s.createdBy            || "",
-    createdAt:            formatDate(s.createdAt),
-    orderDate:            formatDate(s.schedule?.orderDate),
+    createdAt:            toDate(s.createdAt),
+    orderDate:            toDate(s.schedule?.orderDate),
     source:               source === "legacy" ? "Legado" : "Atual",
     notes:                s.notes               || "",
     validationNotes:      s.validationNotes      || "",
@@ -205,10 +207,10 @@ function scheduleToRow(s) {
     serviceLocation: s.serviceLocation || "",
     orderNumber:     s.orderNumber     || "",
     reason:          s.reason          || "",
-    scheduledDate:   formatDate(s.scheduledDate),
-    orderDate:       formatDate(s.orderDate), 
+    scheduledDate:   toDate(s.scheduledDate),
+    orderDate:       toDate(s.orderDate),
     createdBy:       s.createdBy       || "",
-    createdAt:       formatDate(s.createdAt),
+    createdAt:       toDate(s.createdAt),
     reason:          REASON_MAP[s.reason] || s.reason || "",
   };
 }
