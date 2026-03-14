@@ -177,12 +177,11 @@ function serviceToRow(s, source = "current") {
     validatedAt:          formatDate(s.validatedAt),
     createdBy:            s.createdBy            || "",
     createdAt:            formatDate(s.createdAt),
-    orderDate:            formatDate(s.orderDate),
+    orderDate:            formatDate(s.schedule?.orderDate),
     source:               source === "legacy" ? "Legado" : "Atual",
-    notes:              s.notes                || "",
-    validationNotes:     s.validationNotes      || "",
-    orderDate:           formatDate(s.orderDate),
-    reason:              REASON_MAP[s.reason] || s.reason || "", 
+    notes:                s.notes               || "",
+    validationNotes:      s.validationNotes      || "",
+    reason:               REASON_MAP[s.reason] || s.reason || "",
   };
 }
 
@@ -268,6 +267,7 @@ async function streamServices(workbook, { includeOldData, dateFrom, dateTo }) {
   const currentCursor = Service.find(dateFilter)
     .populate({ path: "client", populate: { path: "parent", select: "name" } })
     .populate("product", "name")
+    .populate("schedule", "orderDate")
     .sort({ createdAt: -1 })
     .lean()
     .cursor({ batchSize: BATCH_SIZE });
