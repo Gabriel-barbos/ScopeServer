@@ -35,10 +35,14 @@ export function buildDateFilter(query) {
   };
 
   return {
-    $or: [
-      { source: { $ne: "import" }, ...makeRange("createdAt")   },
-      { source: "import", validatedAt: { $ne: null }, ...makeRange("validatedAt") },
-      { source: "import", validatedAt: null,          ...makeRange("createdAt")   },
+    $and: [
+      {
+        $or: [
+          { source: { $ne: "import" }, ...makeRange("createdAt")   },
+          { source: "import", validatedAt: { $ne: null }, ...makeRange("validatedAt") },
+          { source: "import", validatedAt: null,          ...makeRange("createdAt")   },
+        ],
+      },
     ],
   };
 }
