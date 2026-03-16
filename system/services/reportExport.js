@@ -51,12 +51,20 @@ const DATE_FMT = "dd/mm/yyyy";
 function buildDateRange(dateFrom, dateTo, dateField = "createdAt") {
   if (!dateFrom && !dateTo) return {};
   const filter = {};
-  if (dateFrom) filter.$gte = new Date(dateFrom);
+
+  if (dateFrom) {
+    // Início do dia em Brasília (UTC-3) = T03:00:00Z
+    filter.$gte = new Date(`${dateFrom}T03:00:00.000Z`);
+  }
+
   if (dateTo) {
-    const end = new Date(dateTo);
-    end.setHours(23, 59, 59, 999);
+    // Fim do dia em Brasília (UTC-3) = T02:59:59.999Z do dia seguinte
+    const end = new Date(`${dateTo}T03:00:00.000Z`);
+    end.setUTCDate(end.getUTCDate() + 1);
+    end.setUTCMilliseconds(end.getUTCMilliseconds() - 1);
     filter.$lte = end;
   }
+
   return { [dateField]: filter };
 }
 
