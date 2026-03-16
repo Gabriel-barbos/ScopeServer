@@ -48,24 +48,28 @@ function toDate(date) {
 
 const DATE_FMT = "dd/mm/yyyy";
 
-function buildDateRange(dateFrom, dateTo, dateField = "createdAt") {
+function buildDateRange(dateFrom, dateTo) {
   if (!dateFrom && !dateTo) return {};
 
-  const filter = {};
+  const [fromY, fromM, fromD] = dateFrom.split("-").map(Number);
+  const [toY, toM, toD]       = dateTo.split("-").map(Number);
 
-  if (dateFrom) {
-    // 00:00:00 Brasília = 03:00:00 UTC
-    const [year, month, day] = dateFrom.split("-").map(Number);
-    filter.$gte = new Date(Date.UTC(year, month - 1, day, 3, 0, 0, 0));
-  }
+  const start = dateFrom ? new Date(Date.UTC(fromY, fromM - 1, fromD, 3, 0, 0, 0))       : null;
+  const end   = dateTo   ? new Date(Date.UTC(toY,   toM   - 1, toD + 1, 2, 59, 59, 999)) : null;
 
-  if (dateTo) {
-    // 23:59:59 Brasília = 02:59:59 UTC do dia seguinte
-    const [year, month, day] = dateTo.split("-").map(Number);
-    filter.$lte = new Date(Date.UTC(year, month - 1, day + 1, 2, 59, 59, 999));
-  }
+  const makeRange = (field) => {
+    const r = {};
+    if (start) r.$gte = start;
+    if (end)   r.$lte = end;
+    return { [field]: r };
+  };
 
-  return { [dateField]: filter };
+  return {
+    $or: [
+      { source: { $ne: "import" }, ...makeRange("createdAt")   },
+      { source: "import",          ...makeRange("validatedAt") },
+    ],
+  };
 }
 
 function styleHeaderRow(row, color) {
@@ -319,8 +323,8 @@ async function streamSchedules(workbook, { dateFrom, dateTo }) {
   headerRow.commit();
 
   const Schedule   = await getScheduleModel();
-  const dateFilter = buildDateRange(dateFrom, dateTo, "createdAt");
-
+  const dateFilter = buildDateRange(dateFrom, dateTo);
+  
   const cursor = Schedule.find(dateFilter)
     .populate({ path: "client", populate: { path: "parent", select: "name" } })
     .populate("product", "name")
