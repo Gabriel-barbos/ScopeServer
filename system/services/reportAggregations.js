@@ -16,10 +16,31 @@ export function toObjectId(id) {
 export function buildDateFilter(query) {
   const { startDate, endDate } = query;
   if (!startDate && !endDate) return {};
-  const filter = {};
-  if (startDate) filter.$gte = new Date(startDate);
-  if (endDate)   filter.$lte = new Date(endDate);
-  return { createdAt: filter };
+
+  const parseUTC = (str, endOfDay = false) => {
+    const [y, m, d] = str.split("-").map(Number);
+    return endOfDay
+      ? new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999))
+      : new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+  };
+
+  const start = startDate ? parseUTC(startDate, false) : null;
+  const end   = endDate   ? parseUTC(endDate,   true)  : null;
+
+  const makeRange = (field) => {
+    const r = {};
+    if (start) r.$gte = start;
+    if (end)   r.$lte = end;
+    return { [field]: r };
+  };
+
+  return {
+    $or: [
+      { source: { $ne: "import" }, ...makeRange("createdAt")   },
+      { source: "import", validatedAt: { $ne: null }, ...makeRange("validatedAt") },
+      { source: "import", validatedAt: null,          ...makeRange("createdAt")   },
+    ],
+  };
 }
 
 //helper de cliente para resolver cliente/subcliente e montar match de ids para filtros
