@@ -7,6 +7,9 @@ import ServiceRoutes from "./routes/ServiceRoutes.js";
 import ReportRoutes from "./routes/ReportRoutes.js";
 import ScheduleRoutes from "./routes/ScheduleRoutes.js";
 import ZohoRoutes from "./routes/Zoho.js";
+import knowledgeRoutes from "./routes/KnowledgeRoutes.js";
+import aiRoutes from "./routes/AiRoutes.js";
+
 
 const router = Router();
 
@@ -17,4 +20,6 @@ router.use("/schedules", ScheduleRoutes);
 router.use("/services", ServiceRoutes);
 router.use("/reports", ReportRoutes);
 router.use("/maintenance", ZohoRoutes);
+router.use("/knowledge", knowledgeRoutes);
+router.use("/ai", aiRoutes);
 export default router;
