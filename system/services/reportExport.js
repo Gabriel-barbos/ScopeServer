@@ -51,11 +51,15 @@ const DATE_FMT = "dd/mm/yyyy";
 function buildDateRange(dateFrom, dateTo) {
   if (!dateFrom && !dateTo) return {};
 
-  const [fromY, fromM, fromD] = dateFrom.split("-").map(Number);
-  const [toY, toM, toD]       = dateTo.split("-").map(Number);
+  const parseUTC = (str, endOfDay = false) => {
+    const [y, m, d] = str.split("-").map(Number);
+    return endOfDay
+      ? new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999))
+      : new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+  };
 
-  const start = dateFrom ? new Date(Date.UTC(fromY, fromM - 1, fromD, 3, 0, 0, 0))       : null;
-  const end   = dateTo   ? new Date(Date.UTC(toY,   toM   - 1, toD + 1, 2, 59, 59, 999)) : null;
+  const start = dateFrom ? parseUTC(dateFrom, false) : null;
+  const end   = dateTo   ? parseUTC(dateTo,   true)  : null;
 
   const makeRange = (field) => {
     const r = {};
@@ -67,7 +71,8 @@ function buildDateRange(dateFrom, dateTo) {
   return {
     $or: [
       { source: { $ne: "import" }, ...makeRange("createdAt")   },
-      { source: "import",          ...makeRange("validatedAt") },
+      { source: "import", validatedAt: { $ne: null }, ...makeRange("validatedAt") },
+      { source: "import", validatedAt: null,          ...makeRange("createdAt")   },
     ],
   };
 }
@@ -324,7 +329,7 @@ async function streamSchedules(workbook, { dateFrom, dateTo }) {
 
   const Schedule   = await getScheduleModel();
   const dateFilter = buildDateRange(dateFrom, dateTo);
-  
+
   const cursor = Schedule.find(dateFilter)
     .populate({ path: "client", populate: { path: "parent", select: "name" } })
     .populate("product", "name")
