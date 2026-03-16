@@ -49,22 +49,25 @@ function toDate(date) {
 const DATE_FMT = "dd/mm/yyyy";
 
 function buildDateRange(dateFrom, dateTo, dateField = "createdAt") {
-  if (!dateFrom &&!dateTo) return {};
+  if (!dateFrom && !dateTo) return {};
+
   const filter = {};
+
   if (dateFrom) {
-    // Garante que a data de início seja o início do dia (00:00:00) em UTC
-    const start = new Date(dateFrom);
-    start.setUTCHours(0, 0, 0, 0); // Define para o início do dia em UTC
-    filter.$gte = start;
+    // 00:00:00 Brasília = 03:00:00 UTC
+    const [year, month, day] = dateFrom.split("-").map(Number);
+    filter.$gte = new Date(Date.UTC(year, month - 1, day, 3, 0, 0, 0));
   }
+
   if (dateTo) {
-    // Garante que a data de fim seja o final do dia (23:59:59.999) em UTC
-    const end = new Date(dateTo);
-    end.setUTCHours(23, 59, 59, 999); // Define para o final do dia em UTC
-    filter.$lte = end;
+    // 23:59:59 Brasília = 02:59:59 UTC do dia seguinte
+    const [year, month, day] = dateTo.split("-").map(Number);
+    filter.$lte = new Date(Date.UTC(year, month - 1, day + 1, 2, 59, 59, 999));
   }
+
   return { [dateField]: filter };
 }
+
 function styleHeaderRow(row, color) {
   row.font      = { bold: true, color: { argb: "FFFFFFFF" } };
   row.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
