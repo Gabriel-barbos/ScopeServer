@@ -18,7 +18,8 @@ export function buildDateFilter(query) {
   if (!startDate && !endDate) return {};
 
   const parseUTC = (str, endOfDay = false) => {
-    const [y, m, d] = str.split("-").map(Number);
+    const dateOnly = str.split("T")[0]; // garante que pega só "YYYY-MM-DD"
+    const [y, m, d] = dateOnly.split("-").map(Number);
     return endOfDay
       ? new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999))
       : new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
