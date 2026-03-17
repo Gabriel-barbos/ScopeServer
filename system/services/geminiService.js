@@ -7,11 +7,11 @@ dotenv.config();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// 1. Array com os modelos do Free Tier em ordem de prioridade
 const FREE_TIER_MODELS = [
-  "gemini-3-flash-preview", // Mais recente, porém limite de 20 requisições/dia
-  "gemini-1.5-flash",       // Excelente backup: limite de 15 req/minuto e 1.500/dia
-  "gemini-1.5-pro"          // Modelo mais complexo: limite de 2 req/minuto e 50/dia
+  "gemini-3-flash-preview",
+  "gemini-flash-latest",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite"
 ];
 
 const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";

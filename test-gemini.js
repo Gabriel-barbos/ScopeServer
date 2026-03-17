@@ -1,27 +1,19 @@
-import 'dotenv/config';
-import { generateSupportResponse } from './system/services/geminiService.js'; // Importante: inclua o .js no final
+import dotenv from "dotenv";
+dotenv.config();
 
-async function runTest() {
-    console.log("🚀 Iniciando teste em modo ES Modules...\n");
+async function listarModelos() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+  
+  const data = await response.json();
+  
+  // Filtra apenas os modelos que suportam geração de texto (generateContent)
+  const modelosDisponiveis = data.models.filter(m => 
+    m.supportedGenerationMethods.includes("generateContent")
+  );
 
-    const mockMongoContext = "O Equipamento X reseta segurando o botão traseiro por 10s.";
-    const mockReactHistory = [];
-    const currentMessage = "Como reseto o Equipamento X?";
-
-    try {
-        const response = await generateSupportResponse(
-            mockMongoContext,
-            mockReactHistory,
-            currentMessage
-        );
-
-        console.log("=== RESPOSTA DA IA ===");
-        console.log(response);
-        console.log("======================");
-
-    } catch (error) {
-        console.error("❌ Teste falhou:", error.message);
-    }
+  console.log("Modelos suportados na sua chave:");
+  modelosDisponiveis.forEach(m => console.log(`- ${m.name.replace('models/', '')}`));
 }
 
-runTest();
+listarModelos();
