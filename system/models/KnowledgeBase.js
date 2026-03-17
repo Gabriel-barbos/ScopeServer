@@ -12,11 +12,7 @@ const knowledgeBaseSchema = new mongoose.Schema(
       enum: ["conhecimento", "plataforma", "equipamento", null],
       required: true,
     },
-    category: {
-      type: String,
-      enum: ["equipamento", "plataforma", "conhecimento", null],
-      default: null,
-    },
+
     content: {
       type: String,
       required: true,
