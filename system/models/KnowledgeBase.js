@@ -9,7 +9,7 @@ const knowledgeBaseSchema = new mongoose.Schema(
     },
     mode: {
       type: String,
-      enum: ["conhecimento", "plataforma", "equipamento", null],
+      enum: ["conhecimento", "plataforma", "equipamento","acessos", "email", null],
       required: true,
     },
 
