@@ -7,8 +7,14 @@ dotenv.config();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const GEMINI_ENDPOINT =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
+// 1. Array com os modelos do Free Tier em ordem de prioridade
+const FREE_TIER_MODELS = [
+  "gemini-3-flash-preview", // Mais recente, porém limite de 20 requisições/dia
+  "gemini-1.5-flash",       // Excelente backup: limite de 15 req/minuto e 1.500/dia
+  "gemini-1.5-pro"          // Modelo mais complexo: limite de 2 req/minuto e 50/dia
+];
+
+const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
 function loadSystemPrompt() {
   const filePath = join(__dirname, "systemPrompt.txt");
@@ -27,26 +33,54 @@ export async function generateSupportResponse(dynamicContext, history, currentMe
 
   const contents = [
     ...history.map((msg) => ({
-      role: msg.role === "user" ? "user" : "model", 
+      role: msg.role === "user" ? "user" : "model",
       parts: [{ text: msg.text }],
     })),
     { role: "user", parts: [{ text: currentMessage }] },
   ];
 
-  const response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: fullSystemInstruction }] },
-      contents,
-    }),
-  });
+  let lastError;
 
-  if (!response.ok) {
-    const err = await response.json();
-    throw new Error(`Gemini API error ${response.status}: ${JSON.stringify(err)}`);
+  // 2. Loop de fallback: tenta um modelo, se der erro 429 (cota), vai para o próximo
+  for (const model of FREE_TIER_MODELS) {
+    const endpoint = `${BASE_URL}/${model}:generateContent?key=${apiKey}`;
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: fullSystemInstruction }] },
+          contents,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        
+        // Se for erro de cota (429), lança um erro específico para cair no catch e tentar o próximo
+        if (response.status === 429) {
+          throw new Error(`Quota exceeded for ${model}`);
+        }
+        
+        // Se for erro de sintaxe ou autenticação (ex: 400 ou 401), interrompe tudo
+        throw new Error(`Gemini API error ${response.status} on ${model}: ${JSON.stringify(err)}`);
+      }
+
+      const data = await response.json();
+      return data.candidates[0].content.parts[0].text;
+
+    } catch (error) {
+      console.warn(`[Aviso] Falha ao usar o modelo ${model}: ${error.message}. Tentando o próximo...`);
+      lastError = error;
+      
+      // Se o erro não for de cota estourada, encerra o loop e repassa o erro para a aplicação
+      if (!error.message.includes("Quota exceeded")) {
+        throw error;
+      }
+    }
   }
 
-  const data = await response.json();
-  return data.candidates[0].content.parts[0].text;
+  // 3. Se o loop terminar, significa que todos os modelos esgotaram a cota
+  throw new Error(`Todos os modelos do tier gratuito esgotaram a cota. Último erro: ${lastError.message}`);
 }

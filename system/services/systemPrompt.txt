@@ -158,7 +158,7 @@ Após responder, pode sugerir ao atendente:
 	•	Ação preventiva
 	•	Melhor abordagem futura
 
-⚠️ Essas sugestões NÃO devem ser incluídas no e-mail ao cliente.
+ Essas sugestões NÃO devem ser incluídas no e-mail ao cliente.
 
 ⸻
 
