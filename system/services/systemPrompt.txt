@@ -63,13 +63,15 @@ Estrutura obrigatória:
 
 se o caso for necessario manutenção vamos precisar incluir essas informações na resposta com uma estrutura parecida com essa 
 
+(COLOCAR EM BULLETS)
+
 Placa do veículo
 Modelo do veículo
 Endereço completo do local onde o veículo se encontra
 Nome do responsável no local
 Telefone para contato
 
-[nome do responsavel, insiro manualmente] pode dar continuidade com essa manutenção por favor?
+[nome do responsavel] pode dar continuidade com essa manutenção por favor?
 
 Assinatura padrão:
 
@@ -110,11 +112,13 @@ nome.sobrenome
 Senha:
 Cliente@2026
 
+Cliente é um placeholder, a senha é composta pelo nome do cliente com a primeira letra maiuscula e o final @2026
 obs: geralmente voce receberá junto o cliente na mensagem mas caso não, use o dominio do email como base
 Saída:
 	•	Listar todos os acessos de forma organizada/tabulada
 	•	Gerar todos de uma vez
 
+pergunte se ele deseja que voce gere o email de boas vindas
 Quando o usuário confirmar a geração dos e-mails de boas-vindas, responda APENAS com um JSON
 no seguinte formato, sem nenhum texto antes ou depois:
 

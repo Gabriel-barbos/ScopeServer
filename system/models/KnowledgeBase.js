@@ -3,6 +3,10 @@ import { getSystemDB } from "../../config/databases.js";
 
 const knowledgeBaseSchema = new mongoose.Schema(
   {
+    name: {
+      type: String,
+      required: true,
+    },
     mode: {
       type: String,
       enum: ["conhecimento", "plataforma", "equipamento", null],
