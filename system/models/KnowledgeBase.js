@@ -6,13 +6,13 @@ const knowledgeBaseSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
+      unique: true,
     },
     mode: {
       type: String,
-      enum: ["conhecimento", "plataforma", "equipamento","acessos", "email", null],
+      enum: ["conhecimento", "plataforma", "equipamento", "acessos", "email", "duvidas"],
       required: true,
     },
-
     content: {
       type: String,
       required: true,

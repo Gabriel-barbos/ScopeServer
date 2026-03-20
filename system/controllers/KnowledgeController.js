@@ -43,6 +43,16 @@ async create(req, res) {
   }
 },
 
+async listAll(req, res) {
+  try {
+    const KnowledgeBase = await getKnowledgeBaseModel();
+    const docs = await KnowledgeBase.find().sort({ name: 1 });
+    res.json(docs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+},
+
 async update(req, res) {
   try {
     const KnowledgeBase = await getKnowledgeBaseModel();
