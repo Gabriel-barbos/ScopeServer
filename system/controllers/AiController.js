@@ -23,11 +23,11 @@ const AiController = {
 };
 
 async function fetchContext(mode, category) {
-  if (mode !== "duvidas" || !category) return null;
+  if (mode !== 'duvidas' || !category) return null;
 
   try {
     const KnowledgeBase = await getKnowledgeBaseModel();
-    const doc = await KnowledgeBase.findOne({ mode, category });
+    const doc = await KnowledgeBase.findOne({ name: category });
     return doc?.content ?? null;
   } catch {
     return null;
