@@ -84,3 +84,39 @@ export async function generateSupportResponse(dynamicContext, history, currentMe
   // 3. Se o loop terminar, significa que todos os modelos esgotaram a cota
   throw new Error(`Todos os modelos do tier gratuito esgotaram a cota. Último erro: ${lastError.message}`);
 }
+
+export async function checkGeminiStatus() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return { status: "offline", detail: "API Key não configurada" };
+
+  const endpoint = `${BASE_URL}/gemini-flash-latest:generateContent?key=${apiKey}`;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: "ping" }] }],
+        generationConfig: { maxOutputTokens: 1 }
+      }),
+    });
+
+    if (response.ok) {
+      return { status: "online", detail: "Operacional" };
+    }
+
+    if (response.status >= 500) {
+      return { status: "offline", detail: "Instabilidade nos servidores do Google" };
+    }
+
+    if (response.status === 429) {
+      return { status: "degraded", detail: "Cota excedida ou limite bloqueado" };
+    }
+
+    return { status: "offline", detail: `Erro inesperado: Status ${response.status}` };
+
+  } catch (error) {
+    console.error("Erro ao checar status do Gemini:", error.message);
+    return { status: "offline", detail: "Falha na conexão de rede" };
+  }
+}
