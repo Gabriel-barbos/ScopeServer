@@ -37,7 +37,9 @@ async create(req, res) {
     res.status(201).json(doc);
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(409).json({ error: 'Já existe um registro com esse nome/modo' });
+      const field = Object.keys(error.keyPattern || {}).join(', ') || 'desconhecido';
+      const value = JSON.stringify(error.keyValue || {});
+      return res.status(409).json({ error: `Duplicata detectada no campo: [${field}] com valor: ${value}` });
     }
     res.status(500).json({ error: error.message });
   }
