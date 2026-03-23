@@ -22,4 +22,5 @@ router.use("/reports", ReportRoutes);
 router.use("/maintenance", ZohoRoutes);
 router.use("/knowledge", knowledgeRoutes);
 router.use("/ai", aiRoutes);
+
 export default router;

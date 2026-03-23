@@ -1,5 +1,5 @@
 import getKnowledgeBaseModel from "../models/KnowledgeBase.js";
-import { generateSupportResponse } from "../services/geminiService.js";
+import { generateSupportResponse, checkGeminiStatus } from "../services/geminiService.js";
 
 const AiController = {
   async chat(req, res) {
@@ -20,7 +20,20 @@ const AiController = {
       res.status(500).json({ error: error.message });
     }
   },
+  async status(req, res) {
+    try {
+      const result = await checkGeminiStatus();
+      res.json(result); // Retorna o JSON com { status, detail }
+    } catch (error) {
+      console.error("AI status controller error:", error.message);
+      res.status(500).json({ status: "offline", detail: "Erro interno na verificação" });
+    }
+  }
+
+  
 };
+
+
 
 async function fetchContext(mode, category) {
   if (mode !== 'duvidas' || !category) return null;

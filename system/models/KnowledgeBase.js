@@ -21,8 +21,6 @@ const knowledgeBaseSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Garante que não existam dois documentos com o mesmo mode+category
-knowledgeBaseSchema.index({ mode: 1, category: 1 }, { unique: true });
 
 let KnowledgeBase = null;
 
