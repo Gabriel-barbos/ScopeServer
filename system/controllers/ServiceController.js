@@ -154,6 +154,8 @@ const service = await Service.create({
           protocolNumber:       service.protocolNumber,
           validationNotes:      service.validationNotes,
           secondaryDevice:      service.secondaryDevice,
+          serviceLocation:      service.serviceLocation,
+          orderDate:            service.orderDate,
           validatedBy:          service.validatedBy || "Importação",
           validatedAt:          this.#parseDate(service.validatedAt) || new Date(),
           status:               this.#normalizeStatus(service.status) || "concluido",
