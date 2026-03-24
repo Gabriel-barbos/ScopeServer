@@ -24,8 +24,10 @@ function loadSystemPrompt() {
 const SYSTEM_PROMPT = loadSystemPrompt();
 
 export async function generateSupportResponse(dynamicContext, history, currentMessage) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY não encontrada no .env");
+  // 1. Puxa as duas chaves e filtra para montar um array só com as que existem
+  const apiKeys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_SECONDARY].filter(Boolean);
+  
+  if (apiKeys.length === 0) throw new Error("Nenhuma API Key encontrada no .env");
 
   const fullSystemInstruction = dynamicContext
     ? `${SYSTEM_PROMPT}\n\nCONHECIMENTO ESPECÍFICO:\n${dynamicContext}`
@@ -41,82 +43,97 @@ export async function generateSupportResponse(dynamicContext, history, currentMe
 
   let lastError;
 
-  // 2. Loop de fallback: tenta um modelo, se der erro 429 (cota), vai para o próximo
-  for (const model of FREE_TIER_MODELS) {
-    const endpoint = `${BASE_URL}/${model}:generateContent?key=${apiKey}`;
+  // 2. Loop Externo: Itera sobre as chaves de API
+  for (const [keyIndex, apiKey] of apiKeys.entries()) {
+    const keyName = keyIndex === 0 ? "Principal" : "Secundária";
+
+    // 3. Loop Interno: Itera sobre os modelos de fallback
+    for (const model of FREE_TIER_MODELS) {
+      const endpoint = `${BASE_URL}/${model}:generateContent?key=${apiKey}`;
+
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: fullSystemInstruction }] },
+            contents,
+          }),
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          
+          // Se for erro de cota (429) ou bloqueio de permissão da chave (403), força o fallback
+          if (response.status === 429 || response.status === 403) {
+            throw new Error(`Bloqueio de cota/acesso (${response.status}) para o modelo ${model}`);
+          }
+          
+          // Se for erro na requisição (ex: 400 bad request), interrompe tudo
+          throw new Error(`Gemini API error ${response.status} on ${model}: ${JSON.stringify(err)}`);
+        }
+
+        const data = await response.json();
+        return data.candidates[0].content.parts[0].text;
+
+      } catch (error) {
+        console.warn(`[Aviso] Falha na Chave ${keyName} (${model}): ${error.message}. Pulando...`);
+        lastError = error;
+        
+        // Se o erro NÃO for de cota ou bloqueio, joga para o front-end e encerra
+        if (!error.message.includes("Bloqueio de cota/acesso")) {
+          throw error;
+        }
+      }
+    }
+  }
+
+  // 4. Se chegou aqui, ambas as chaves e todos os modelos falharam
+  throw new Error(`Todas as chaves e modelos esgotaram a cota. Último erro: ${lastError.message}`);
+}
+
+export async function checkGeminiStatus() {
+  const apiKeys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_SECONDARY].filter(Boolean);
+  if (apiKeys.length === 0) return { status: "offline", detail: "Nenhuma API Key configurada no back-end" };
+
+  let lastStatus = { status: "offline", detail: "Erro desconhecido" };
+
+  // Faz o ping testando as chaves até uma funcionar
+  for (const apiKey of apiKeys) {
+    const endpoint = `${BASE_URL}/gemini-flash-latest:generateContent?key=${apiKey}`;
 
     try {
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: fullSystemInstruction }] },
-          contents,
+          contents: [{ role: "user", parts: [{ text: "ping" }] }],
+          generationConfig: { maxOutputTokens: 1 }
         }),
       });
 
-      if (!response.ok) {
-        const err = await response.json();
-        
-        // Se for erro de cota (429), lança um erro específico para cair no catch e tentar o próximo
-        if (response.status === 429) {
-          throw new Error(`Quota exceeded for ${model}`);
-        }
-        
-        // Se for erro de sintaxe ou autenticação (ex: 400 ou 401), interrompe tudo
-        throw new Error(`Gemini API error ${response.status} on ${model}: ${JSON.stringify(err)}`);
+      // Se uma chave responder 200 OK, a API inteira está salva e online
+      if (response.ok) return { status: "online", detail: "Operacional" };
+
+      if (response.status >= 500) {
+        lastStatus = { status: "offline", detail: "Instabilidade nos servidores do Google" };
+        continue; // Tenta a próxima chave
       }
 
-      const data = await response.json();
-      return data.candidates[0].content.parts[0].text;
+      if (response.status === 429 || response.status === 403) {
+        lastStatus = { status: "degraded", detail: "Cota excedida, tentando fallback..." };
+        continue; // Tenta a próxima chave
+      }
+
+      // Se for 400, a payload tá errada
+      lastStatus = { status: "offline", detail: `Erro inesperado: Status ${response.status}` };
+      break; 
 
     } catch (error) {
-      console.warn(`[Aviso] Falha ao usar o modelo ${model}: ${error.message}. Tentando o próximo...`);
-      lastError = error;
-      
-      // Se o erro não for de cota estourada, encerra o loop e repassa o erro para a aplicação
-      if (!error.message.includes("Quota exceeded")) {
-        throw error;
-      }
+      console.error("Erro ao checar status do Gemini:", error.message);
+      lastStatus = { status: "offline", detail: "Falha na conexão de rede" };
     }
   }
 
-  // 3. Se o loop terminar, significa que todos os modelos esgotaram a cota
-  throw new Error(`Todos os modelos do tier gratuito esgotaram a cota. Último erro: ${lastError.message}`);
-}
-
-export async function checkGeminiStatus() {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return { status: "offline", detail: "API Key não configurada" };
-
-  const endpoint = `${BASE_URL}/gemini-flash-latest:generateContent?key=${apiKey}`;
-
-  try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: "ping" }] }],
-        generationConfig: { maxOutputTokens: 1 }
-      }),
-    });
-
-    if (response.ok) {
-      return { status: "online", detail: "Operacional" };
-    }
-
-    if (response.status >= 500) {
-      return { status: "offline", detail: "Instabilidade nos servidores do Google" };
-    }
-
-    if (response.status === 429) {
-      return { status: "degraded", detail: "Cota excedida ou limite bloqueado" };
-    }
-
-    return { status: "offline", detail: `Erro inesperado: Status ${response.status}` };
-
-  } catch (error) {
-    console.error("Erro ao checar status do Gemini:", error.message);
-    return { status: "offline", detail: "Falha na conexão de rede" };
-  }
+  return lastStatus;
 }
