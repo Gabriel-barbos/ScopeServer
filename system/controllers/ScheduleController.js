@@ -2,6 +2,8 @@ import getScheduleModel from "../models/Schedule.js";
 import getClientModel from "../models/Client.js";
 import getProductModel from "../models/Product.js";
 import getServiceModel from "../models/Service.js";
+import getServiceLegacyModel from "../models/ServiceLegacy.js";
+
 import {
   normalizeServiceType,
   normalizeStatus,
@@ -69,29 +71,30 @@ async list(req, res) {
     const isVinSearch = !!req.query.search;
     const filter      = this.#buildFilter(req.query);
 
-    if (isVinSearch) {
-      // Busca schedules + services para o VIN/placa pesquisado
-      const Service = await getServiceModel();
+   if (isVinSearch) {
+  const Service = await getServiceModel();
+  const ServiceLegacy = await getServiceLegacyModel();
 
-      const searchRegex = new RegExp(req.query.search, "i");
-      const serviceFilter = {
-        $or: [{ vin: searchRegex }, { plate: searchRegex }],
-      };
+  const searchRegex = new RegExp(req.query.search, "i");
+  const serviceFilter = {
+    $or: [{ vin: searchRegex }, { plate: searchRegex }],
+  };
 
-      const [schedules, services] = await Promise.all([
-        Schedule.find(filter)
-          .populate("client", "name image")
-          .populate("product", "name")
-          .sort({ scheduledDate: 1 }),
-        Service.find(serviceFilter)
-          .populate("client", "name image")
-          .populate("product", "name")
-          .sort({ validatedAt: -1 }),
-      ]);
+  const [schedules, services, legacyServices] = await Promise.all([
+    Schedule.find(filter)
+      .populate("client", "name image")
+      .populate("product", "name")
+      .sort({ scheduledDate: 1 }),
+    Service.find(serviceFilter)
+      .populate("client", "name image")
+      .populate("product", "name")
+      .sort({ validatedAt: -1 }),
+    ServiceLegacy.find(serviceFilter)
+      .sort({ validatedAt: -1 }),
+  ]);
 
-      return res.json({ schedules, services });
-    }
-
+  return res.json({ schedules, services: [...services, ...legacyServices] });
+}
     // Listagem normal sem busca por VIN/placa
     const [data, total] = await Promise.all([
       Schedule.find(filter)
