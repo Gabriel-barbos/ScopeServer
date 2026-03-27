@@ -49,6 +49,26 @@ const ServiceSchema = new mongoose.Schema(
       ref: "Schedule",
     },
 
+//dados do schedule
+      responsible:      { type: String },
+      responsiblePhone: { type: String },
+      condutor:         { type: String },
+      orderNumber:      { type: String },
+      orderDate:        { type: Date },
+      serviceLocation:  { type: String },
+      reason:           { type: String },
+      situation:        { type: String },
+      vehicleGroup:     { type: String },
+      ticketNumber:     { type: String },
+      subject:          { type: String },
+      description:      { type: String },
+      category:         { type: String },
+      maintenanceRequest: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "MaintenanceRequest",
+      },
+
+      
     source: {
       type: String,
       enum: ["validation", "import"],

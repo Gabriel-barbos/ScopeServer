@@ -38,7 +38,7 @@ const HEADER_COLOR_SERVICES  = "FF722ED1";
 const HEADER_COLOR_SCHEDULES = "FF1890FF";
 const LEGACY_ROW_COLOR       = "FFFFF3CD";
 const BATCH_SIZE             = 500;
-
+const SCHEDULE_FIELD_COLOR = "FFD6E4FF";
 
 function toDate(date) {
   if (!date) return null;
@@ -117,7 +117,7 @@ function getServiceColumns(includeOldData) {
     { header: "Modelo",                 key: "model",                width: 18 },
     { header: "Odômetro (km)",          key: "odometer",             width: 14 },
     { header: "Prestador",              key: "provider",             width: 20 },
-    { header: "Técnico",                key: "technician",           width: 20 },   
+    { header: "Técnico",                key: "technician",           width: 20 },
     { header: "Endereço do Serviço",    key: "serviceAddress",       width: 30 },
     { header: "Local de Instalação",    key: "installationLocation", width: 24 },
     { header: "Bloqueio",               key: "blocking",             width: 10 },
@@ -128,7 +128,19 @@ function getServiceColumns(includeOldData) {
     { header: "Observações",            key: "notes",                width: 18 },
     { header: "Notas de Validação",     key: "validationNotes",      width: 18 },
     { header: "Motivo",                 key: "reason",               width: 18 },
-
+    //campos herdados do agendamento (azul claro)
+    { header: "Nº Pedido",             key: "orderNumber",      width: 16 },
+    { header: "Data Agendada",         key: "scheduledDate",    width: 18, numFmt: DATE_FMT },
+    { header: "Responsável",           key: "responsible",      width: 20 },
+    { header: "Tel. Responsável",      key: "responsiblePhone", width: 18 },
+    { header: "Condutor",              key: "condutor",         width: 20 },
+    { header: "Local do Serviço",      key: "serviceLocation",  width: 24 },
+    { header: "Grupo de Veículos",     key: "vehicleGroup",     width: 20 },
+    { header: "Situação",              key: "situation",        width: 18 },
+    { header: "Ticket Nº",             key: "ticketNumber",     width: 16 },
+    { header: "Assunto",               key: "subject",          width: 24 },
+    { header: "Descrição",             key: "description",      width: 30 },
+    { header: "Categoria",             key: "category",         width: 18 },
   ];
 
   if (includeOldData) {
@@ -137,7 +149,6 @@ function getServiceColumns(includeOldData) {
 
   return columns;
 }
-
 function getScheduleColumns() {
   return [
     { header: "Cliente",             key: "client",           width: 24 },
@@ -175,32 +186,45 @@ function serviceToRow(s, source = "current") {
   }
 
   return {
-    client:               clientName,
-    subClient:            subClientName,
-    vin:                  s.vin                  || "",
     plate:                s.plate                || "",
-    model:                s.model                || "",
+    vin:                  s.vin                  || "",
+    deviceId:             s.deviceId             || "",
     product:              source === "legacy" ? (s.product || "") : (s.product?.name || ""),
     serviceType:          SERVICE_TYPE_MAP[s.serviceType] || s.serviceType || "",
     status:               s.status               || "",
-    deviceId:             s.deviceId             || "",
+    orderDate:            toDate(s.orderDate),
+    validatedAt:          toDate(s.validatedAt),
+    client:               clientName,
+    subClient:            subClientName,
     secondaryDevice:      s.secondaryDevice      || "",
-    technician:           s.technician           || "",
+    model:                s.model                || "",
+    odometer:             s.odometer             ?? "",
     provider:             s.provider             || "",
+    technician:           s.technician           || "",
     serviceAddress:       s.serviceAddress       || "",
     installationLocation: s.installationLocation || "",
-    odometer:             s.odometer ?? "",
     blocking:             s.blockingEnabled ? "Sim" : "Não",
     protocolNumber:       s.protocolNumber       || "",
     validatedBy:          s.validatedBy          || "",
-    validatedAt:          toDate(s.validatedAt),
     createdBy:            s.createdBy            || "",
     createdAt:            toDate(s.createdAt),
-    orderDate:            toDate(s.schedule?.orderDate),
-    source:               source === "legacy" ? "Legado" : "Atual",
-    notes:                s.notes               || "",
+    notes:                s.notes                || "",
     validationNotes:      s.validationNotes      || "",
-    reason:               REASON_MAP[s.reason] || s.reason || "",
+    reason:               REASON_MAP[s.reason]   || s.reason || "",
+    //campos herdados do agendamento —
+    orderNumber:          s.orderNumber          || "",
+    scheduledDate:        toDate(s.scheduledDate),
+    responsible:          s.responsible          || "",
+    responsiblePhone:     s.responsiblePhone     || "",
+    condutor:             s.condutor             || "",
+    serviceLocation:      s.serviceLocation      || "",
+    vehicleGroup:         s.vehicleGroup         || "",
+    situation:            s.situation            || "",
+    ticketNumber:         s.ticketNumber         || "",
+    subject:              s.subject              || "",
+    description:          s.description          || "",
+    category:             s.category             || "",
+    source:               source === "legacy" ? "Legado" : "Atual",
   };
 }
 
@@ -278,15 +302,33 @@ async function streamServices(workbook, { includeOldData, dateFrom, dateTo }) {
 
   const headerRow = sheet.getRow(1);
   styleHeaderRow(headerRow, HEADER_COLOR_SERVICES);
+
+  // Pinta de azul claro as colunas herdadas do agendamento
+  const scheduleFieldKeys = [
+    "orderNumber", "scheduledDate", "responsible", "responsiblePhone",
+    "condutor", "serviceLocation", "vehicleGroup", "situation",
+    "ticketNumber", "subject", "description", "category",
+  ];
+  sheet.columns.forEach((col, idx) => {
+    if (scheduleFieldKeys.includes(col.key)) {
+      headerRow.getCell(idx + 1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: SCHEDULE_FIELD_COLOR },
+      };
+      // mantém o texto legível (fonte escura)
+      headerRow.getCell(idx + 1).font = { bold: true, color: { argb: "FF1D3557" } };
+    }
+  });
+
   headerRow.commit();
 
   const Service    = await getServiceModel();
-  const dateFilter = buildDateRange(dateFrom, dateTo, "createdAt");
+  const dateFilter = buildDateRange(dateFrom, dateTo);
 
   const currentCursor = Service.find(dateFilter)
     .populate({ path: "client", populate: { path: "parent", select: "name" } })
     .populate("product", "name")
-    .populate("schedule", "orderDate")
     .sort({ createdAt: -1 })
     .lean()
     .cursor({ batchSize: BATCH_SIZE });

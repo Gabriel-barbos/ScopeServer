@@ -15,62 +15,75 @@ class ServiceController {
     this.remove               = this.remove.bind(this);
   }
 
-  async createFromValidation(req, res) {
-    try {
-      const { scheduleId, validationData } = req.body;
+async createFromValidation(req, res) {
+  try {
+    const { scheduleId, validationData } = req.body;
 
-      await getClientModel();
-      await getProductModel();
-      const Schedule = await getScheduleModel();
-      const Service  = await getServiceModel();
+    await getClientModel();
+    await getProductModel();
+    const Schedule = await getScheduleModel();
+    const Service  = await getServiceModel();
 
-      const schedule = await Schedule.findById(scheduleId)
-        .populate("client")
-        .populate("product");
+    const schedule = await Schedule.findById(scheduleId)
+      .populate("client")
+      .populate("product");
 
-      if (!schedule) {
-        return res.status(404).json({ error: "Agendamento não encontrado" });
-      }
-
-const service = await Service.create({
-  vin:           schedule.vin,
-  model:         schedule.model,
-  scheduledDate: schedule.scheduledDate,
-  serviceType:   schedule.serviceType,
-  notes:         schedule.notes,
-  createdBy:     schedule.createdBy,
-  product:       validationData.product || schedule.product, 
-  client:        schedule.client,
-  provider:      schedule.provider,
-  serviceAddress: schedule.serviceAddress,
-
-  plate:                validationData.plate || schedule.plate,  
-  status:               validationData.status,
-  deviceId:             validationData.deviceId,
-  technician:           validationData.technician,
-  installationLocation: validationData.installationLocation,
-  odometer:             validationData.odometer,
-  blockingEnabled:      validationData.blockingEnabled,
-  protocolNumber:       validationData.protocolNumber,
-  validationNotes:      validationData.validationNotes,
-  secondaryDevice:      validationData.secondaryDevice,
-  validatedBy:          validationData.validatedBy,
-  validatedAt:          new Date(),
-  schedule:             scheduleId,
-  source:               "validation",
-});
-
-      await Schedule.findByIdAndUpdate(scheduleId, {
-        status:  "concluido",
-        service: service._id,
-      });
-
-      return res.status(201).json(service);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+    if (!schedule) {
+      return res.status(404).json({ error: "Agendamento não encontrado" });
     }
-  }
 
+    const service = await Service.create({
+      //campos herdados do Schedule
+      vin:                schedule.vin,
+      plate:              schedule.plate,
+      model:              schedule.model,
+      scheduledDate:      schedule.scheduledDate,
+      serviceType:        schedule.serviceType,
+      notes:              schedule.notes,
+      createdBy:          schedule.createdBy,
+      client:             schedule.client._id ?? schedule.client,
+      product:            validationData.product || schedule.product?._id || schedule.product,
+      provider:           schedule.provider,
+      serviceAddress:     schedule.serviceAddress,
+      serviceLocation:    schedule.serviceLocation,
+      orderNumber:        schedule.orderNumber,
+      orderDate:          schedule.orderDate,
+      responsible:        schedule.responsible,
+      responsiblePhone:   schedule.responsiblePhone,
+      condutor:           schedule.condutor,
+      vehicleGroup:       schedule.vehicleGroup,
+      reason:             schedule.reason,
+      situation:          schedule.situation,
+      ticketNumber:       schedule.ticketNumber,
+      subject:            schedule.subject,
+      description:        schedule.description,
+      category:           schedule.category,
+      maintenanceRequest: schedule.maintenanceRequest,
+
+      //dados da validação
+      plate:                validationData.plate || schedule.plate,
+      deviceId:             validationData.deviceId,
+      technician:           validationData.technician,
+      installationLocation: validationData.installationLocation,
+      odometer:             validationData.odometer,
+      blockingEnabled:      validationData.blockingEnabled ?? true,
+      protocolNumber:       validationData.protocolNumber,
+      validationNotes:      validationData.validationNotes,
+      secondaryDevice:      validationData.secondaryDevice,
+      validatedBy:          validationData.validatedBy,
+      validatedAt:          new Date(),
+      status:               "concluido",
+      source:               "validation",
+      schedule:             scheduleId,
+    });
+
+    await Schedule.findByIdAndDelete(scheduleId);
+
+    return res.status(201).json(service);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
   async create(req, res) {
     try {
       await getClientModel();

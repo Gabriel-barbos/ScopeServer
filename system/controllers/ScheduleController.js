@@ -55,44 +55,68 @@ class ScheduleController {
     }
   }
 
-  async list(req, res) {
-    try {
-      await getClientModel();
-      await getProductModel();
-      const Schedule = await getScheduleModel();
+async list(req, res) {
+  try {
+    await getClientModel();
+    await getProductModel();
+    const Schedule = await getScheduleModel();
 
-      const page  = Math.max(1, parseInt(req.query.page)  || 1);
-      const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
-      const skip  = (page - 1) * limit;
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
+    const skip  = (page - 1) * limit;
 
-      const filter = this.#buildFilter(req.query);
+    const isVinSearch = !!req.query.search;
+    const filter      = this.#buildFilter(req.query);
 
-      const [data, total] = await Promise.all([
+    if (isVinSearch) {
+      // Busca schedules + services para o VIN/placa pesquisado
+      const Service = await getServiceModel();
+
+      const searchRegex = new RegExp(req.query.search, "i");
+      const serviceFilter = {
+        $or: [{ vin: searchRegex }, { plate: searchRegex }],
+      };
+
+      const [schedules, services] = await Promise.all([
         Schedule.find(filter)
           .populate("client", "name image")
           .populate("product", "name")
-          .sort({ scheduledDate: 1 })
-          .skip(skip)
-          .limit(limit),
-        Schedule.countDocuments(filter),
+          .sort({ scheduledDate: 1 }),
+        Service.find(serviceFilter)
+          .populate("client", "name image")
+          .populate("product", "name")
+          .sort({ validatedAt: -1 }),
       ]);
 
-      res.json({
-        data,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-          hasNext: page * limit < total,
-          hasPrev: page > 1,
-        },
-      });
-    } catch (error) {
-      handleError(res, error);
+      return res.json({ schedules, services });
     }
-  }
 
+    // Listagem normal sem busca por VIN/placa
+    const [data, total] = await Promise.all([
+      Schedule.find(filter)
+        .populate("client", "name image")
+        .populate("product", "name")
+        .sort({ scheduledDate: 1 })
+        .skip(skip)
+        .limit(limit),
+      Schedule.countDocuments(filter),
+    ]);
+
+    return res.json({
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1,
+      },
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+}
   async findById(req, res) {
     try {
       await getClientModel();
