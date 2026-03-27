@@ -1,6 +1,7 @@
 import getScheduleModel from "../models/Schedule.js";
 import getClientModel from "../models/Client.js";
 import getProductModel from "../models/Product.js";
+import getServiceModel from "../models/Service.js";
 import {
   normalizeServiceType,
   normalizeStatus,
