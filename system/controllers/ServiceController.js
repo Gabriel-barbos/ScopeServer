@@ -163,7 +163,7 @@ async createFromValidation(req, res) {
           serviceAddress:       service.serviceAddress,
           installationLocation: service.installationLocation,
           odometer:             service.odometer,
-          blockingEnabled:      service.blockingEnabled ?? true,
+          blockingEnabled:      this.#parseBoolean(service.blockingEnabled),
           protocolNumber:       service.protocolNumber,
           validationNotes:      service.validationNotes,
           secondaryDevice:      service.secondaryDevice,
@@ -173,6 +173,22 @@ async createFromValidation(req, res) {
           validatedAt:          this.#parseDate(service.validatedAt) || new Date(),
           status:               this.#normalizeStatus(service.status) || "concluido",
           source:               "import",
+
+           orderNumber:          service.orderNumber,
+          orderDate:            this.#parseDate(service.orderDate),
+          scheduledDate:        this.#parseDate(service.scheduledDate),
+          responsible:          service.responsible,
+          responsiblePhone:     service.responsiblePhone,
+          condutor:             service.condutor,
+          vehicleGroup:         service.vehicleGroup,
+          situation:            service.situation,
+          ticketNumber:         service.ticketNumber,
+          subject:              service.subject,
+          description:          service.description,
+          category:             service.category,
+          reason:               service.reason,
+          notes:                service.notes,
+          createdBy:            service.createdBy,
         });
       }
 
@@ -327,6 +343,14 @@ async createFromValidation(req, res) {
     if (query.client)      filter.client      = query.client;
     return filter;
   }
+
+  #parseBoolean(value) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    return ["sim", "true", "1", "yes"].includes(value.toLowerCase());
+  }
+  return true; // default
+}
 
   #validateService(service, lineNum) {
     const errors = [];
