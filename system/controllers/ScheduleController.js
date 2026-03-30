@@ -71,7 +71,7 @@ async list(req, res) {
     const isVinSearch = !!req.query.search;
     const filter      = this.#buildFilter(req.query);
 
-   if (isVinSearch) {
+if (isVinSearch) {
   const Service = await getServiceModel();
   const ServiceLegacy = await getServiceLegacyModel();
 
@@ -80,17 +80,22 @@ async list(req, res) {
     $or: [{ vin: searchRegex }, { plate: searchRegex }],
   };
 
+  const SEARCH_LIMIT = 50; 
+
   const [schedules, services, legacyServices] = await Promise.all([
     Schedule.find(filter)
       .populate("client", "name image")
       .populate("product", "name")
-      .sort({ scheduledDate: 1 }),
+      .sort({ scheduledDate: 1 })
+      .limit(SEARCH_LIMIT),
     Service.find(serviceFilter)
       .populate("client", "name image")
       .populate("product", "name")
-      .sort({ validatedAt: -1 }),
+      .sort({ validatedAt: -1 })
+      .limit(SEARCH_LIMIT),
     ServiceLegacy.find(serviceFilter)
-      .sort({ validatedAt: -1 }),
+      .sort({ validatedAt: -1 })
+      .limit(SEARCH_LIMIT),
   ]);
 
   return res.json({ schedules, services: [...services, ...legacyServices] });
