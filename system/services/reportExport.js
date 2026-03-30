@@ -263,7 +263,7 @@ async function streamCursorToSheet(cursor, sheet, rowTransformer, options = {}) 
 
   for await (const doc of cursor) {
     const row = sheet.addRow(rowTransformer(doc, isLegacy ? "legacy" : "current"));
-    if (includeOldData && isLegacy) highlightRow(row, LEGACY_ROW_COLOR);
+    row.commit();
     count++;
     if (count % BATCH_SIZE === 0) {
       await new Promise((resolve) => setImmediate(resolve));
