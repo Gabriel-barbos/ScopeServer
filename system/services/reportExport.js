@@ -261,18 +261,21 @@ async function streamCursorToSheet(cursor, sheet, rowTransformer, options = {}) 
   const { isLegacy = false, includeOldData = false } = options;
   let count = 0;
 
-  for await (const doc of cursor) {
-    const row = sheet.addRow(rowTransformer(doc, isLegacy ? "legacy" : "current"));
-    row.commit();
-    count++;
-    if (count % BATCH_SIZE === 0) {
-      await new Promise((resolve) => setImmediate(resolve));
+  try {
+    for await (const doc of cursor) {
+      const row = sheet.addRow(rowTransformer(doc, isLegacy ? "legacy" : "current"));
+      row.commit();
+      count++;
+      if (count % BATCH_SIZE === 0) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
     }
+  } finally {
+    await cursor.close();
   }
 
   return count;
 }
-
 
 export async function streamExcelExport(
   { type, includeOldData = false, dateFrom = null, dateTo = null },
