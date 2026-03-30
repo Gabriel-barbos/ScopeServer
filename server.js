@@ -47,7 +47,8 @@ try {
 
   await initializeModels();
 
- app.listen(PORT, () => {
+  const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
   console.log(`API Central rodando na porta ${PORT}`);
   
   setInterval(() => {
@@ -55,6 +56,7 @@ try {
     console.log(`[MEM] heapUsed: ${Math.round(mem.heapUsed / 1024 / 1024)}MB | heapTotal: ${Math.round(mem.heapTotal / 1024 / 1024)}MB`);
   }, 60_000);
 });
+
 } catch (err) {
   console.error(" Erro ao inicializar:", err);
   process.exit(1);
