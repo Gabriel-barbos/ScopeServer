@@ -38,7 +38,6 @@ class ScheduleController {
       await getProductModel();
       const Schedule = await getScheduleModel();
 
-      // Verifica duplicata por chassi antes de criar
       const duplicate = await checkDuplicateVin(req.body.vin, Schedule);
       if (duplicate) {
         return res.status(409).json({
@@ -58,74 +57,79 @@ class ScheduleController {
     }
   }
 
-async list(req, res) {
-  try {
-    await getClientModel();
-    await getProductModel();
-    const Schedule = await getScheduleModel();
+  async list(req, res) {
+    try {
+      await getClientModel();
+      await getProductModel();
+      const Schedule = await getScheduleModel();
 
-    const page  = Math.max(1, parseInt(req.query.page)  || 1);
-    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
-    const skip  = (page - 1) * limit;
+      const page  = Math.max(1, parseInt(req.query.page)  || 1);
+      const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
+      const skip  = (page - 1) * limit;
 
-    const isVinSearch = !!req.query.search;
-    const filter      = this.#buildFilter(req.query);
+      const isVinSearch = !!req.query.search;
+      const filter      = this.#buildFilter(req.query);
 
-if (isVinSearch) {
-  const Service = await getServiceModel();
-  const ServiceLegacy = await getServiceLegacyModel();
+      if (isVinSearch) {
+        const Service = await getServiceModel();
+        const ServiceLegacy = await getServiceLegacyModel();
 
-  const searchRegex = new RegExp(req.query.search, "i");
-  const serviceFilter = {
-    $or: [{ vin: searchRegex }, { plate: searchRegex }],
-  };
+        const searchRegex = new RegExp(req.query.search, "i");
+        const serviceFilter = {
+          $or: [{ vin: searchRegex }, { plate: searchRegex }],
+        };
 
-  const SEARCH_LIMIT = 50; 
+        const SEARCH_LIMIT = 50;
 
-  const [schedules, services, legacyServices] = await Promise.all([
-    Schedule.find(filter)
-      .populate("client", "name image")
-      .populate("product", "name")
-      .sort({ scheduledDate: 1 })
-      .limit(SEARCH_LIMIT),
-    Service.find(serviceFilter)
-      .populate("client", "name image")
-      .populate("product", "name")
-      .sort({ validatedAt: -1 })
-      .limit(SEARCH_LIMIT),
-    ServiceLegacy.find(serviceFilter)
-      .sort({ validatedAt: -1 })
-      .limit(SEARCH_LIMIT),
-  ]);
+        const [schedules, services, legacyServices] = await Promise.all([
+          Schedule.find(filter)
+            .populate("client", "name image")
+            .populate("product", "name")
+            .sort({ scheduledDate: 1 })
+            .limit(SEARCH_LIMIT)
+            .lean(),
+          Service.find(serviceFilter)
+            .populate("client", "name image")
+            .populate("product", "name")
+            .sort({ validatedAt: -1 })
+            .limit(SEARCH_LIMIT)
+            .lean(),
+          ServiceLegacy.find(serviceFilter)
+            .sort({ validatedAt: -1 })
+            .limit(SEARCH_LIMIT)
+            .lean(),
+        ]);
 
-  return res.json({ schedules, services: [...services, ...legacyServices] });
-}
-    // Listagem normal sem busca por VIN/placa
-    const [data, total] = await Promise.all([
-      Schedule.find(filter)
-        .populate("client", "name image")
-        .populate("product", "name")
-        .sort({ scheduledDate: 1 })
-        .skip(skip)
-        .limit(limit),
-      Schedule.countDocuments(filter),
-    ]);
+        return res.json({ schedules, services: [...services, ...legacyServices] });
+      }
 
-    return res.json({
-      data,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-        hasNext: page * limit < total,
-        hasPrev: page > 1,
-      },
-    });
-  } catch (error) {
-    handleError(res, error);
+      const [data, total] = await Promise.all([
+        Schedule.find(filter)
+          .populate("client", "name image")
+          .populate("product", "name")
+          .sort({ scheduledDate: 1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+        Schedule.countDocuments(filter),
+      ]);
+
+      return res.json({
+        data,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasNext: page * limit < total,
+          hasPrev: page > 1,
+        },
+      });
+    } catch (error) {
+      handleError(res, error);
+    }
   }
-}
+
   async findById(req, res) {
     try {
       await getClientModel();
@@ -134,7 +138,8 @@ if (isVinSearch) {
 
       const schedule = await Schedule.findById(req.params.id)
         .populate("client")
-        .populate("product");
+        .populate("product")
+        .lean();
 
       if (!schedule) return res.status(404).json({ error: NOT_FOUND_MSG });
       res.json(schedule);
@@ -221,7 +226,6 @@ if (isVinSearch) {
       await getProductModel();
       const Schedule = await getScheduleModel();
 
-      // Verifica duplicatas por chassi em paralelo
       const duplicateChecks = await Promise.all(
         processedSchedules.map((s) => checkDuplicateVin(s.vin, Schedule))
       );
@@ -293,7 +297,7 @@ if (isVinSearch) {
     }
   }
 
-  // Helpers privados 
+  // Helpers privados
 
   #buildFilter(query) {
     const filter = {};
