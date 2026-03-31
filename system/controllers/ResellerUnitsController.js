@@ -146,6 +146,26 @@ class ResellerUnitsController {
     }
   }
 
+  // GET /reseller-units/export
+async export(req, res) {
+  try {
+    const filter = buildFilter(req.query);
+
+    const ResellerUnits = await getResellerUnitsModel();
+
+    const units = await ResellerUnits
+      .find(filter)
+      .select("unit_number")   // só o que precisa
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.json({ data: units.map((u) => u.unit_number) });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+
   // GET /summary
 async summary(req, res) {
   try {

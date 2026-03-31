@@ -11,6 +11,9 @@ router.delete("/bulk",        ResellerUnitsController.bulkDelete);
 // Summary
 router.get("/summary", ResellerUnitsController.summary);
 
+// Export
+router.get("/export", ResellerUnitsController.export);
+
 // Listagem
 router.get("/",               ResellerUnitsController.list);
 
