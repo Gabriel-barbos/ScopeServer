@@ -42,12 +42,15 @@ class ResellerUnitsController {
       if (units.length > MAX_BULK)
         return res.status(400).json({ error: `Limite de ${MAX_BULK} unidades por operação` });
 
-      const docs = units.map((u) => ({
+         const now = new Date();
+        const docs = units.map((u) => ({
         unit_number: u.unit_number,
         reseller:    u.reseller,
         askedBy:     u.askedBy,
         status:      "pending",
-      }));
+        createdAt:   now,
+        updatedAt:   now,
+}));
 
       const ResellerUnits = await getResellerUnitsModel();
       const result = await ResellerUnits.insertMany(docs, { ordered: false, lean: true });
