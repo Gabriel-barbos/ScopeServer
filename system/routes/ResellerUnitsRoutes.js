@@ -8,6 +8,9 @@ router.post("/bulk",          ResellerUnitsController.bulkCreate);
 router.put("/bulk/status",    ResellerUnitsController.bulkUpdateStatus);
 router.delete("/bulk",        ResellerUnitsController.bulkDelete);
 
+// Summary
+router.get("/summary", ResellerUnitsController.summary);
+
 // Listagem
 router.get("/",               ResellerUnitsController.list);
 

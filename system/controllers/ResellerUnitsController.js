@@ -25,6 +25,7 @@ class ResellerUnitsController {
     this.bulkUpdateStatus = this.bulkUpdateStatus.bind(this);
     this.bulkDelete       = this.bulkDelete.bind(this);
     this.list             = this.list.bind(this);
+    this.summary          = this.summary.bind(this);
     this.findById         = this.findById.bind(this);
     this.updateOne        = this.updateOne.bind(this);
     this.deleteOne        = this.deleteOne.bind(this);
@@ -141,6 +142,22 @@ class ResellerUnitsController {
       return res.status(500).json({ error: error.message });
     }
   }
+
+  // GET /summary
+async summary(req, res) {
+  try {
+    const ResellerUnits = await getResellerUnitsModel();
+
+    const [pending, done] = await Promise.all([
+      ResellerUnits.countDocuments({ status: "pending" }),
+      ResellerUnits.countDocuments({ status: "done" }),
+    ]);
+
+    return res.json({ pending, done, total: pending + done });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
 
   // GET /:id
   async findById(req, res) {
