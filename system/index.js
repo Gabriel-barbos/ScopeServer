@@ -9,6 +9,7 @@ import ScheduleRoutes from "./routes/ScheduleRoutes.js";
 import ZohoRoutes from "./routes/Zoho.js";
 import knowledgeRoutes from "./routes/KnowledgeRoutes.js";
 import aiRoutes from "./routes/AiRoutes.js";
+import resellerUnitsRoutes from "./routes/ResellerUnitsRoutes.js";
 
 
 const router = Router();
@@ -22,5 +23,6 @@ router.use("/reports", ReportRoutes);
 router.use("/maintenance", ZohoRoutes);
 router.use("/knowledge", knowledgeRoutes);
 router.use("/ai", aiRoutes);
+router.use("/reseller-units", resellerUnitsRoutes);
 
 export default router;

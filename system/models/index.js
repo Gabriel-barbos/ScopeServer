@@ -6,6 +6,7 @@ import getUserModel from "./User.js";
 import getServiceLegacyModel from "./ServiceLegacy.js";
 import getMaintenanceRequestModel from "./MaintenanceRequest.js";
 import getKnowledgeBaseModel from "./KnowledgeBase.js";
+import getResellerUnitsModel from "./ResellerUnits.js";
 
 let modelsInitialized = false;
 
@@ -20,6 +21,7 @@ export const initializeModels = async () => {
   await getServiceLegacyModel();
   await getMaintenanceRequestModel();
   await getKnowledgeBaseModel();
+  await getResellerUnitsModel();
 
   modelsInitialized = true;
   console.log("✅ Models do sistema inicializados");
@@ -33,4 +35,5 @@ export {
   getServiceLegacyModel,
   getUserModel,
   getKnowledgeBaseModel,
+  getResellerUnitsModel,
 };
