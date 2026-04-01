@@ -4,7 +4,8 @@ import { getSystemDB } from "../../config/databases.js";
 const ResellerUnitsSchema = new mongoose.Schema(
   {
     unit_number: { type: String },
-    reseller: { type: String },
+    old_reseller: { type: String },
+    new_reseller: { type: String },
     status: { type: String },
     askedBy: { type: String },
   },

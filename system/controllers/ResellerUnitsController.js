@@ -45,7 +45,8 @@ class ResellerUnitsController {
          const now = new Date();
         const docs = units.map((u) => ({
         unit_number: u.unit_number,
-        reseller:    u.reseller,
+        old_reseller:    u.old_reseller,
+        new_reseller:    u.new_reseller,
         askedBy:     u.askedBy,
         status:      "pending",
         createdAt:   now,
@@ -155,7 +156,7 @@ async export(req, res) {
 
     const units = await ResellerUnits
       .find(filter)
-      .select("unit_number")   // só o que precisa
+      .select("unit_number", "old_reseller" ) 
       .sort({ createdAt: -1 })
       .lean();
 
