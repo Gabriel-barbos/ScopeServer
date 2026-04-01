@@ -156,11 +156,11 @@ async export(req, res) {
 
     const units = await ResellerUnits
       .find(filter)
-      .select("unit_number", "old_reseller" ) 
+      .select("unit_number old_reseller askedBy")
       .sort({ createdAt: -1 })
       .lean();
 
-    return res.json({ data: units.map((u) => u.unit_number) });
+    return res.json({ data: units });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
