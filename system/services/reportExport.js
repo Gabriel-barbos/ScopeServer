@@ -8,6 +8,8 @@ const SERVICE_TYPE_MAP = {
   installation: "Instalação",
   maintenance:  "Manutenção",
   removal:      "Desinstalação",
+  reinstallation: "Reinstalação",
+  diagnostic:   "Remoção Diagnóstico",
 };
 
 const STATUS_MAP = {
@@ -121,8 +123,8 @@ function getServiceColumns(includeOldData) {
     { header: "Endereço do Serviço",    key: "serviceAddress",       width: 30 },
     { header: "Local de Instalação",    key: "installationLocation", width: 24 },
     { header: "Bloqueio",               key: "blocking",             width: 10 },
-    { header: "Nº Protocolo",           key: "protocolNumber",       width: 16 },
     { header: "Validado por",           key: "validatedBy",          width: 18 },
+    { header: "Nº Protocolo",           key: "protocolNumber",       width: 16 },
     { header: "Criado por",             key: "createdBy",            width: 18 },
     { header: "Data de Criação",        key: "createdAt",            width: 18, numFmt: DATE_FMT },
     { header: "Observações",            key: "notes",                width: 18 },
