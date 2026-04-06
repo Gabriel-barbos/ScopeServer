@@ -9,6 +9,8 @@ class ServiceController {
     this.createFromValidation = this.createFromValidation.bind(this);
     this.create               = this.create.bind(this);
     this.bulkImport           = this.bulkImport.bind(this);
+    this.bulkValidation       = this.bulkValidation.bind(this);
+    this.resolveVins          = this.resolveVins.bind(this);
     this.list                 = this.list.bind(this);
     this.findById             = this.findById.bind(this);
     this.update               = this.update.bind(this);
@@ -84,6 +86,206 @@ async createFromValidation(req, res) {
     return res.status(500).json({ error: error.message });
   }
 }
+  // Bulk Validation
+
+  async bulkValidation(req, res) {
+    try {
+      const { items, validatedBy: globalValidatedBy } = req.body;
+
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: "Envie um array de itens para validação" });
+      }
+      if (items.length > 200) {
+        return res.status(400).json({ error: "Limite de 200 itens por operação em lote" });
+      }
+
+      await getClientModel();
+      const productsCache = new Map();
+      const Schedule      = await getScheduleModel();
+      const Service       = await getServiceModel();
+
+      const results = {
+        created: [],
+        skipped: [],
+        errors:  [],
+      };
+
+      for (let i = 0; i < items.length; i++) {
+        const item    = items[i];
+        const lineNum = i + 1;
+        const vin     = item.vin?.toString().trim();
+
+        if (!vin) {
+          results.errors.push({ line: lineNum, vin: null, error: "Chassi ausente" });
+          continue;
+        }
+
+        try {
+          // 1. Localiza o agendamento pelo VIN (case-insensitive)
+          const schedule = await Schedule
+            .findOne({ vin: new RegExp(`^${vin}$`, "i") })
+            .populate("client")
+            .populate("product");
+
+          if (!schedule) {
+            results.skipped.push({ line: lineNum, vin, reason: "Agendamento não encontrado" });
+            continue;
+          }
+
+          const vd = item.validationData || {};
+
+          // 2. Resolve produto
+          let resolvedProduct = schedule.product?._id ?? schedule.product ?? null;
+          if (vd.product) {
+            const overriddenProduct = await this.#resolveProduct(vd.product, productsCache);
+            if (!overriddenProduct) {
+              results.errors.push({
+                line: lineNum,
+                vin,
+                error: `Produto "${vd.product}" não encontrado`,
+              });
+              continue;
+            }
+            resolvedProduct = overriddenProduct;
+          }
+
+          // 3. Cria o Service
+          const service = await Service.create({
+            // campos herdados do Schedule
+            vin:                schedule.vin,
+            model:              schedule.model,
+            scheduledDate:      schedule.scheduledDate,
+            serviceType:        schedule.serviceType,
+            notes:              schedule.notes,
+            createdBy:          schedule.createdBy,
+            client:             schedule.client._id ?? schedule.client,
+            provider:           schedule.provider,
+            serviceAddress:     schedule.serviceAddress,
+            serviceLocation:    schedule.serviceLocation,
+            orderNumber:        schedule.orderNumber,
+            orderDate:          schedule.orderDate,
+            responsible:        schedule.responsible,
+            responsiblePhone:   schedule.responsiblePhone,
+            condutor:           schedule.condutor,
+            vehicleGroup:       schedule.vehicleGroup,
+            reason:             schedule.reason,
+            situation:          schedule.situation,
+            ticketNumber:       schedule.ticketNumber,
+            subject:            schedule.subject,
+            description:        schedule.description,
+            category:           schedule.category,
+            maintenanceRequest: schedule.maintenanceRequest,
+
+            // dados da validação 
+            plate:                vd.plate                || schedule.plate,
+            product:              resolvedProduct,
+            deviceId:             vd.deviceId,
+            technician:           vd.technician,
+            installationLocation: vd.installationLocation,
+            odometer:             vd.odometer             ?? null,
+            blockingEnabled:      this.#parseBoolean(vd.blockingEnabled ?? true),
+            protocolNumber:       vd.protocolNumber       || null,
+            validationNotes:      vd.validationNotes      || null,
+            secondaryDevice:      vd.secondaryDevice      || null,
+            validatedBy:          vd.validatedBy          || globalValidatedBy || "Validação em lote",
+            validatedAt:          this.#parseDate(vd.validatedAt) || new Date(),
+            status:               "concluido",
+            source:               "validation",
+            schedule:             schedule._id,
+          });
+
+          // Remove o agendamento
+          await Schedule.findByIdAndDelete(schedule._id);
+
+          results.created.push({ line: lineNum, vin, serviceId: service._id });
+        } catch (itemErr) {
+          results.errors.push({ line: lineNum, vin, error: itemErr.message });
+        }
+      }
+
+      const statusCode = results.errors.length > 0 && results.created.length === 0
+        ? 400
+        : results.errors.length > 0 || results.skipped.length > 0
+          ? 207
+          : 201;
+
+      return res.status(statusCode).json({
+        success: results.created.length > 0,
+        summary: {
+          total:   items.length,
+          created: results.created.length,
+          skipped: results.skipped.length,
+          errors:  results.errors.length,
+        },
+        created: results.created,
+        skipped: results.skipped,
+        errors:  results.errors,
+      });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  
+   //POST /services/resolve-vins
+  
+  async resolveVins(req, res) {
+    try {
+      const { vins } = req.body;
+
+      if (!Array.isArray(vins) || vins.length === 0) {
+        return res.status(400).json({ error: "Envie um array de VINs" });
+      }
+      if (vins.length > 200) {
+        return res.status(400).json({ error: "Limite de 200 VINs por consulta" });
+      }
+
+      await getClientModel();
+      await getProductModel();
+      const Schedule = await getScheduleModel();
+
+      // Cria regex case-insensitive para cada VIN
+      const vinRegexes = vins.map((v) => new RegExp(`^${v.trim()}$`, "i"));
+
+      const found = await Schedule
+        .find({ vin: { $in: vinRegexes } })
+        .select("vin model plate client product serviceType status")
+        .populate("client", "name")
+        .populate("product", "name")
+        .lean();
+
+      const foundMap = new Map(
+        found.map((s) => [s.vin.toUpperCase(), s])
+      );
+
+      const result = vins.map((vin, idx) => {
+        const schedule = foundMap.get(vin.toUpperCase()) || null;
+        return {
+          line:     idx + 1,
+          vin:      vin.trim(),
+          found:    !!schedule,
+          schedule: schedule
+            ? {
+                id:          schedule._id,
+                model:       schedule.model,
+                plate:       schedule.plate,
+                client:      schedule.client?.name ?? null,
+                product:     schedule.product?.name ?? null,
+                serviceType: schedule.serviceType,
+                status:      schedule.status,
+              }
+            : null,
+        };
+      });
+
+      return res.json(result);
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  // Demais métodos
+
   async create(req, res) {
     try {
       await getClientModel();

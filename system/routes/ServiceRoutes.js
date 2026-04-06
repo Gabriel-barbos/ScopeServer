@@ -6,6 +6,8 @@ const router = Router();
 router.post("/", ServiceController.create);
 router.post("/from-validation", ServiceController.createFromValidation);
 router.post("/bulk-import", ServiceController.bulkImport);
+router.post("/bulk-validation", ServiceController.bulkValidation);
+router.post("/resolve-vins", ServiceController.resolveVins);
 router.get("/", ServiceController.list);
 router.get("/:id", ServiceController.findById);
 router.put("/:id", ServiceController.update);
