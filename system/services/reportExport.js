@@ -72,9 +72,8 @@ function buildDateRange(dateFrom, dateTo) {
 
   return {
     $or: [
-      { source: { $ne: "import" }, ...makeRange("createdAt")   },
-      { source: "import", validatedAt: { $ne: null }, ...makeRange("validatedAt") },
-      { source: "import", validatedAt: null,          ...makeRange("createdAt")   },
+      { validatedAt: { $ne: null }, ...makeRange("validatedAt") },
+      { validatedAt: null,          ...makeRange("createdAt")   },
     ],
   };
 }
@@ -85,11 +84,7 @@ function styleHeaderRow(row, color) {
   row.alignment = { horizontal: "center" };
 }
 
-function highlightRow(row, color) {
-  row.eachCell((cell) => {
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
-  });
-}
+
 
 function resolveClientNames(clientDoc) {
   if (!clientDoc) return { clientName: "", subClientName: "" };

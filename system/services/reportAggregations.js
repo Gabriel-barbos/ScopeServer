@@ -39,9 +39,8 @@ export function buildDateFilter(query) {
     $and: [
       {
         $or: [
-          { source: { $ne: "import" }, ...makeRange("createdAt")   },
-          { source: "import", validatedAt: { $ne: null }, ...makeRange("validatedAt") },
-          { source: "import", validatedAt: null,          ...makeRange("createdAt")   },
+          { validatedAt: { $ne: null }, ...makeRange("validatedAt") },
+          { validatedAt: null,          ...makeRange("createdAt")   },
         ],
       },
     ],
