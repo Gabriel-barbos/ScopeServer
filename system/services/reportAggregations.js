@@ -241,11 +241,15 @@ export async function evolutionByMonth() {
   const Service = await getServiceModel();
   const result = await Service.aggregate([
     {
+      $addFields: {
+        _refDate: { $ifNull: ["$validatedAt", "$createdAt"] },
+      },
+    },
+    {
       $group: {
         _id: {
-             year:        { $year:  { date: "$createdAt", timezone: "America/Sao_Paulo" } },
-          month:       { $month: { date: "$createdAt", timezone: "America/Sao_Paulo" } },
-          day:         { $dayOfMonth: { date: "$createdAt", timezone: "America/Sao_Paulo" } },
+          year:        { $year:  { date: "$_refDate", timezone: "America/Sao_Paulo" } },
+          month:       { $month: { date: "$_refDate", timezone: "America/Sao_Paulo" } },
           serviceType: "$serviceType",
         },
         count: { $sum: 1 },
@@ -258,7 +262,8 @@ export async function evolutionByMonth() {
   result.forEach(({ _id, count }) => {
     const key = `${_id.year}-${String(_id.month).padStart(2, "0")}`;
     if (!map.has(key)) map.set(key, { installation: 0, maintenance: 0, removal: 0 });
-    map.get(key)[_id.serviceType] = count;
+    const entry = map.get(key);
+    entry[_id.serviceType] = (entry[_id.serviceType] ?? 0) + count;
   });
 
   return Array.from(map.entries()).map(([month, types]) => ({
@@ -274,11 +279,16 @@ export async function evolutionByDay() {
   const Service = await getServiceModel();
   const result = await Service.aggregate([
     {
+      $addFields: {
+        _refDate: { $ifNull: ["$validatedAt", "$createdAt"] },
+      },
+    },
+    {
       $group: {
         _id: {
-          year:        { $year:  { date: "$createdAt", timezone: "America/Sao_Paulo" } },
-          month:       { $month: { date: "$createdAt", timezone: "America/Sao_Paulo" } },
-          day:         { $dayOfMonth: { date: "$createdAt", timezone: "America/Sao_Paulo" } },
+          year:        { $year:  { date: "$_refDate", timezone: "America/Sao_Paulo" } },
+          month:       { $month: { date: "$_refDate", timezone: "America/Sao_Paulo" } },
+          day:         { $dayOfMonth: { date: "$_refDate", timezone: "America/Sao_Paulo" } },
           serviceType: "$serviceType",
         },
         count: { $sum: 1 },
@@ -294,7 +304,8 @@ export async function evolutionByDay() {
     if (!monthMap.has(monthKey)) monthMap.set(monthKey, new Map());
     const dayMap = monthMap.get(monthKey);
     if (!dayMap.has(dayKey)) dayMap.set(dayKey, { installation: 0, maintenance: 0, removal: 0 });
-    dayMap.get(dayKey)[_id.serviceType] = count;
+    const entry = dayMap.get(dayKey);
+    entry[_id.serviceType] = (entry[_id.serviceType] ?? 0) + count;
   });
 
   const months = {};
@@ -342,7 +353,14 @@ export async function reportDaily(startDate, endDate) {
 
   const Service = await getServiceModel();
   const result = await Service.aggregate([
-    { $match: { createdAt: { $gte: start, $lte: end } } },
+    {
+      $match: {
+        $or: [
+          { $and: [{ validatedAt: { $ne: null } }, { validatedAt: { $gte: start, $lte: end } }] },
+          { validatedAt: null, createdAt: { $gte: start, $lte: end } },
+        ],
+      },
+    },
     ...resolveClientStages,
     {
       $group: {
