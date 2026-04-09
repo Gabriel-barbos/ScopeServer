@@ -339,17 +339,41 @@ export async function servicesByClient() {
   return result.map(({ _id, count }) => ({ client: _id, total: count }));
 }
 
+// BRT = UTC-3 → meia-noite BRT equivale a 03:00 UTC do mesmo dia
+const BRT_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+function todayRangeBRT() {
+  // "hoje" no horário de Brasília
+  const nowUTC   = Date.now();
+  const nowBRT   = new Date(nowUTC - BRT_OFFSET_MS); // ajusta p/ BRT
+  const y = nowBRT.getUTCFullYear();
+  const m = nowBRT.getUTCMonth();
+  const d = nowBRT.getUTCDate();
+
+  // 00:00 BRT → 03:00 UTC
+  const start = new Date(Date.UTC(y, m, d, 3, 0, 0, 0));
+  // 23:59:59.999 BRT → 02:59:59.999 UTC do dia seguinte
+  const end   = new Date(Date.UTC(y, m, d + 1, 2, 59, 59, 999));
+  return { start, end };
+}
+
+function parseDateRangeBRT(startDate, endDate) {
+  // Espera strings "YYYY-MM-DD" ou ISO; interpreta como BRT
+  const parseDay = (str, isEnd) => {
+    const dateOnly = str.split("T")[0];
+    const [y, m, d] = dateOnly.split("-").map(Number);
+    return isEnd
+      ? new Date(Date.UTC(y, m - 1, d + 1, 2, 59, 59, 999)) // 23:59:59 BRT
+      : new Date(Date.UTC(y, m - 1, d,     3,  0,  0,   0)); // 00:00 BRT
+  };
+  return { start: parseDay(startDate, false), end: parseDay(endDate, true) };
+}
+
 //report diario
 export async function reportDaily(startDate, endDate) {
-  let start, end;
-  if (startDate && endDate) {
-    start = new Date(startDate);
-    end   = new Date(endDate);
-  } else {
-    const now = new Date();
-    start = new Date(now.getFullYear(), now.getMonth(), now.getDate(),  0,  0,  0);
-    end   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-  }
+  const { start, end } = (startDate && endDate)
+    ? parseDateRangeBRT(startDate, endDate)
+    : todayRangeBRT();
 
   const Service = await getServiceModel();
   const result = await Service.aggregate([
