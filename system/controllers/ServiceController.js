@@ -95,8 +95,8 @@ async createFromValidation(req, res) {
       if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: "Envie um array de itens para validação" });
       }
-      if (items.length > 200) {
-        return res.status(400).json({ error: "Limite de 200 itens por operação em lote" });
+      if (items.length > 500) {
+        return res.status(400).json({ error: "Limite de 500 itens por operação em lote" });
       }
 
       await getClientModel();
@@ -236,8 +236,8 @@ async createFromValidation(req, res) {
       if (!Array.isArray(vins) || vins.length === 0) {
         return res.status(400).json({ error: "Envie um array de VINs" });
       }
-      if (vins.length > 200) {
-        return res.status(400).json({ error: "Limite de 200 VINs por consulta" });
+      if (vins.length > 500) {
+        return res.status(400).json({ error: "Limite de 500 VINs por consulta" });
       }
 
       await getClientModel();
