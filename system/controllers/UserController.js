@@ -35,7 +35,7 @@ router.post("/login", async (req, res) => {
 
     res.json({
       token: generateToken(user._id),
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      user: { id: user._id, name: user.name, email: user.email, role: user.role, roles: user.roles },
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -60,7 +60,7 @@ router.get("/:id", async (req, res) => {
 // Update user 
 router.put("/:id", async (req, res) => {
   try {
-    const { name, email, role, password } = req.body;
+    const { name, email, role, roles, password } = req.body;
     
     const User = await getUserModel();
     const user = await User.findById(req.params.id);
@@ -70,6 +70,7 @@ router.put("/:id", async (req, res) => {
     if (name) user.name = name;
     if (email) user.email = email;
     if (role) user.role = role;
+    if (roles !== undefined) user.roles = roles; // permite setar ou limpar o array
     
     // Atualiza senha apenas se foi fornecida
     if (password && password.trim() !== "") {

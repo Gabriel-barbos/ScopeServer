@@ -12,6 +12,11 @@ const userSchema = new mongoose.Schema({
     enum: ["administrator", "validation", "support", "scheduling", "billing", "commercial", "CX", "lab"],
     default: "support",
   },
+  roles: {
+    type: [String],
+    enum: ["administrator", "validation", "support", "scheduling", "billing", "commercial", "CX", "lab"],
+    default: undefined, // não define default: usuários existentes não são afetados
+  },
 }, { timestamps: true });
 
 userSchema.pre("save", async function () {
