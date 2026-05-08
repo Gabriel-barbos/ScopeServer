@@ -44,12 +44,6 @@ const SCHEDULE_FIELD_COLOR = "FFD6E4FF";
 
 const TZ_OFFSET_MS = -3 * 60 * 60 * 1000; // UTC-3 (Horário de Brasília)
 
-/**
- * Converte uma data UTC para o horário local de Brasília (UTC-3) antes de
- * passar ao ExcelJS. O ExcelJS trata objetos Date como UTC puro, então sem
- * esse ajuste um registro criado às 23h BRT apareceria como o dia seguinte
- * na planilha Excel.
- */
 function toDate(date) {
   if (!date) return null;
   const d = new Date(date);
