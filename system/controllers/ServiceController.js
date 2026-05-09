@@ -421,7 +421,7 @@ async createFromValidation(req, res) {
 
   async list(req, res) {
     try {
-      await getClientModel();
+      const Client = await getClientModel();
       await getProductModel();
       const Service       = await getServiceModel();
       const ServiceLegacy = await getServiceLegacyModel();
@@ -430,11 +430,24 @@ async createFromValidation(req, res) {
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
       const skip  = (page - 1) * limit;
 
-      const filter = this.#buildFilter(req.query);
+      const mainFilter = this.#buildFilter(req.query);
+      const legacyFilter = { ...mainFilter };
+
+      // O ServiceLegacy salva o cliente como uma string (nome).
+      // Então precisamos buscar o nome real usando o ID para que o filtro legacy funcione.
+      if (req.query.client) {
+        const clientDoc = await Client.findById(req.query.client).select("name");
+        if (clientDoc && clientDoc.name) {
+          const escapedName = clientDoc.name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          legacyFilter.client = new RegExp(escapedName, "i");
+        } else {
+          legacyFilter.client = "___NOT_FOUND___";
+        }
+      }
 
       const [totalMain, totalLegacy] = await Promise.all([
-        Service.countDocuments(filter),
-        ServiceLegacy.countDocuments(filter),
+        Service.countDocuments(mainFilter),
+        ServiceLegacy.countDocuments(legacyFilter),
       ]);
 
       const total       = totalMain + totalLegacy;
@@ -445,7 +458,7 @@ async createFromValidation(req, res) {
 
       const [mainData, legacyData] = await Promise.all([
         mainLimit > 0
-          ? Service.find(filter)
+          ? Service.find(mainFilter)
               .populate("client", "name image")
               .populate("product", "name")
               .sort({ validatedAt: -1 })
@@ -453,7 +466,7 @@ async createFromValidation(req, res) {
               .limit(mainLimit)
           : [],
         legacyLimit > 0
-          ? ServiceLegacy.find(filter)
+          ? ServiceLegacy.find(legacyFilter)
               .sort({ validatedAt: -1 })
               .skip(legacySkip)
               .limit(legacyLimit)
