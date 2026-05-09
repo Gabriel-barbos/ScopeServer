@@ -543,6 +543,26 @@ async createFromValidation(req, res) {
     if (query.status)      filter.status      = query.status;
     if (query.serviceType) filter.serviceType = query.serviceType;
     if (query.client)      filter.client      = query.client;
+    
+    if (query.vin) {
+      filter.vin = new RegExp(query.vin, "i");
+    }
+    if (query.deviceId) {
+      filter.deviceId = new RegExp(query.deviceId, "i");
+    }
+    if (query.validatedAtStart || query.validatedAtEnd) {
+      filter.validatedAt = {};
+      if (query.validatedAtStart) {
+        filter.validatedAt.$gte = new Date(query.validatedAtStart);
+      }
+      if (query.validatedAtEnd) {
+        const endDate = new Date(query.validatedAtEnd);
+        // Set to end of the day if time isn't explicitly provided (optional but helpful)
+        endDate.setUTCHours(23, 59, 59, 999);
+        filter.validatedAt.$lte = endDate;
+      }
+    }
+    
     return filter;
   }
 
