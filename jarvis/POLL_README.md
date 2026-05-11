@@ -11,7 +11,7 @@ Sistema automatizado que identifica veículos sem comunicação há mais de 72 h
 ### Fluxo Resumido
 
 ```
-CRON (Ter & Sex 06:00)
+CRON (Ter & Sex 08:00)
   │
   ├─ 1. Gera token MZone (auto-refresh a cada 50 min)
   │

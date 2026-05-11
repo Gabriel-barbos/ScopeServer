@@ -1,4 +1,5 @@
 import express from "express";
+import exceljs from "exceljs";
 import PollOrchestrator from "../services/PollOrchestrator.js";
 import getPollHistoryModel from "../models/PollHistory.js";
 import getPollExecutionModel from "../models/PollExecution.js";
@@ -73,6 +74,86 @@ router.get("/history/maintenance", async (req, res) => {
     res.json({ count: items.length, items });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/jarvis/poll/export — Exporta relatório em Excel via Streaming
+router.get("/export", async (req, res) => {
+  try {
+    const PollHistory = await getPollHistoryModel();
+    const { status } = req.query;
+
+    const filter = {};
+    if (status) filter.status = status;
+
+    // Configura os headers para download do arquivo Excel
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=poll_report.xlsx"
+    );
+
+    // Cria o workbook e worksheet para streaming
+    const options = {
+      stream: res,
+      useStyles: true,
+      useSharedStrings: true,
+    };
+    const workbook = new exceljs.stream.xlsx.WorkbookWriter(options);
+    const worksheet = workbook.addWorksheet("Poll History");
+
+    // Define as colunas
+    worksheet.columns = [
+      { header: "Vehicle ID", key: "vehicleId", width: 36 },
+      { header: "Chassi (VIN)", key: "vin", width: 25 },
+      { header: "Descrição", key: "description", width: 40 },
+      { header: "Status", key: "status", width: 15 },
+      { header: "Total Tentativas", key: "totalAttempts", width: 15 },
+      { header: "Última Vez Offline", key: "lastSeenOffline", width: 20 },
+      { header: "Último Poll", key: "lastPollDate", width: 20 },
+      { header: "Data Manutenção", key: "flaggedAt", width: 20 },
+      { header: "Histórico de Tentativas", key: "attempts", width: 50 },
+    ];
+
+    // Utiliza cursor para não sobrecarregar a memória
+    const cursor = PollHistory.find(filter).sort({ lastPollDate: -1 }).cursor();
+
+    for await (const doc of cursor) {
+      // Formata as tentativas em uma string legível
+      const attemptsStr = doc.attempts
+        .map(
+          (a, i) => {
+            const dateStr = a.date ? new Date(a.date).toISOString().split("T")[0] : "";
+            return `[${i + 1}] ${dateStr} - ${a.success ? "OK" : "ERRO"}`;
+          }
+        )
+        .join(" | ");
+
+      worksheet.addRow({
+        vehicleId: doc.vehicleId,
+        vin: doc.vin || "",
+        description: doc.description || "",
+        status: doc.status || "pending",
+        totalAttempts: doc.totalAttempts || 0,
+        lastSeenOffline: doc.lastSeenOffline ? new Date(doc.lastSeenOffline).toISOString() : "",
+        lastPollDate: doc.lastPollDate ? new Date(doc.lastPollDate).toISOString() : "",
+        flaggedAt: doc.flaggedAt ? new Date(doc.flaggedAt).toISOString() : "",
+        attempts: attemptsStr,
+      }).commit(); // commit libera a linha da memória
+    }
+
+    worksheet.commit();
+    await workbook.commit();
+  } catch (err) {
+    console.error("[PollRoutes] Erro na exportação:", err.message);
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message });
+    } else {
+      res.end(); // Encerra o stream em caso de erro no meio
+    }
   }
 });
 
