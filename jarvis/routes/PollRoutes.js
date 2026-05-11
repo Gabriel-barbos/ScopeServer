@@ -105,42 +105,65 @@ router.get("/export", async (req, res) => {
     const workbook = new exceljs.stream.xlsx.WorkbookWriter(options);
     const worksheet = workbook.addWorksheet("Poll History");
 
-    // Define as colunas
+    // Helper para converter a data para fuso do Brasil (GMT-3) mantendo como Date
+    // Isso garante que o Excel receba um valor de data/hora que pode ser filtrado nativamente
+    const toBrazilDate = (dateVal) => {
+      if (!dateVal) return "";
+      const d = new Date(dateVal);
+      // Subtrai 3 horas para que a representação em UTC seja igual ao horário de Brasília
+      d.setUTCHours(d.getUTCHours() - 3);
+      return d;
+    };
+
+    // Define as colunas (Sem o Vehicle ID e com estilo de número de Data)
     worksheet.columns = [
-      { header: "Vehicle ID", key: "vehicleId", width: 36 },
       { header: "Chassi (VIN)", key: "vin", width: 25 },
       { header: "Descrição", key: "description", width: 40 },
       { header: "Status", key: "status", width: 15 },
       { header: "Total Tentativas", key: "totalAttempts", width: 15 },
-      { header: "Última Vez Offline", key: "lastSeenOffline", width: 20 },
-      { header: "Último Poll", key: "lastPollDate", width: 20 },
-      { header: "Data Manutenção", key: "flaggedAt", width: 20 },
-      { header: "Histórico de Tentativas", key: "attempts", width: 50 },
+      { header: "Data de Identificação (Offline)", key: "lastSeenOffline", width: 28, style: { numFmt: "dd/mm/yyyy hh:mm" } },
+      { header: "Último Poll", key: "lastPollDate", width: 20, style: { numFmt: "dd/mm/yyyy hh:mm" } },
+      { header: "Data Manutenção", key: "flaggedAt", width: 20, style: { numFmt: "dd/mm/yyyy hh:mm" } },
+      { header: "Histórico de Tentativas", key: "attempts", width: 55 },
     ];
+
+    // Estilizar cabeçalho para um visual mais profissional
+    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1F2937' } // Cinza escuro (estilo tailwind gray-800)
+    };
+    worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
 
     // Utiliza cursor para não sobrecarregar a memória
     const cursor = PollHistory.find(filter).sort({ lastPollDate: -1 }).cursor();
 
     for await (const doc of cursor) {
-      // Formata as tentativas em uma string legível
+      // Formata as tentativas em uma string legível com data e hora ajustada
       const attemptsStr = doc.attempts
         .map(
           (a, i) => {
-            const dateStr = a.date ? new Date(a.date).toISOString().split("T")[0] : "";
-            return `[${i + 1}] ${dateStr} - ${a.success ? "OK" : "ERRO"}`;
+            if (!a.date) return `[${i + 1}] ERRO`;
+            const d = toBrazilDate(a.date);
+            const day = String(d.getUTCDate()).padStart(2, '0');
+            const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const year = d.getUTCFullYear();
+            const hours = String(d.getUTCHours()).padStart(2, '0');
+            const mins = String(d.getUTCMinutes()).padStart(2, '0');
+            return `[${i + 1}] ${day}/${month}/${year} ${hours}:${mins} - ${a.success ? "OK" : "ERRO"}`;
           }
         )
         .join(" | ");
 
       worksheet.addRow({
-        vehicleId: doc.vehicleId,
         vin: doc.vin || "",
         description: doc.description || "",
         status: doc.status || "pending",
         totalAttempts: doc.totalAttempts || 0,
-        lastSeenOffline: doc.lastSeenOffline ? new Date(doc.lastSeenOffline).toISOString() : "",
-        lastPollDate: doc.lastPollDate ? new Date(doc.lastPollDate).toISOString() : "",
-        flaggedAt: doc.flaggedAt ? new Date(doc.flaggedAt).toISOString() : "",
+        lastSeenOffline: toBrazilDate(doc.lastSeenOffline),
+        lastPollDate: toBrazilDate(doc.lastPollDate),
+        flaggedAt: toBrazilDate(doc.flaggedAt),
         attempts: attemptsStr,
       }).commit(); // commit libera a linha da memória
     }
