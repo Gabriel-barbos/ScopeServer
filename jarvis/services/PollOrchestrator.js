@@ -4,27 +4,21 @@ import PollQueue from "./PollQueue.js";
 import getPollHistoryModel from "../models/PollHistory.js";
 import getPollExecutionModel from "../models/PollExecution.js";
 
-// Credenciais BR Main
 const CREDENTIALS = {
   login: "brazil-support@scopetechnology.com",
   password: "Scope@br2021",
 };
 
-// Flag para evitar execuções simultâneas
+// Janela para considerar um veículo recuperado:
+// o lastKnownEventUtcTimestamp deve ser mais recente que 72h atrás
+const RECOVERED_WINDOW_MS = 72 * 60 * 60 * 1000;
+
+// Delay entre verificações de recovered (GET leve, sem necessidade de 500ms)
+const RECOVERED_CHECK_DELAY_MS = 100;
+
 let isRunning = false;
 
 class PollOrchestrator {
-  /**
-   * Executa o fluxo completo de poll:
-   * 1. Gera token
-   * 2. Varre base paginada (só offline 72h+)
-   * 3. Filtra desativados
-   * 4. Consulta histórico e envia polls
-   * 5. Detecta veículos recuperados
-   * 6. Registra log de execução
-   * 
-   * @param {'cron'|'manual'} trigger - Quem disparou a execução
-   */
   static async run(trigger = "manual") {
     if (isRunning) {
       console.log("[PollOrchestrator] ⚠️ Já existe uma execução em andamento. Abortando.");
@@ -36,7 +30,6 @@ class PollOrchestrator {
     const PollExecution = await getPollExecutionModel();
     const PollHistory = await getPollHistoryModel();
 
-    // Cria log de execução
     const execution = new PollExecution({
       startedAt: new Date(),
       trigger,
@@ -47,30 +40,22 @@ class PollOrchestrator {
     console.log(`[PollOrchestrator] 🚀 Iniciando execução (trigger: ${trigger})`);
 
     try {
-      // 1. Token Manager
       const tokenManager = new TokenManager(CREDENTIALS);
-
-      // 2. Scanner + Queue
       const scanner = new PollScanner({ tokenManager });
       const queue = new PollQueue({ tokenManager });
 
-      // Acumula IDs dos veículos vistos como offline nesta execução
       const offlineVehicleIds = new Set();
 
-      // Totais acumulados
       let totalPolled = 0;
       let totalSkipped = 0;
       let totalNewMaintenance = 0;
       let totalErrors = 0;
 
-      // 3. Varredura paginada — processa cada página inline
       const scanStats = await scanner.scan(async (activeVehicles, pageStats) => {
-        // Registra todos os IDs offline desta página
         for (const v of activeVehicles) {
           offlineVehicleIds.add(v.id);
         }
 
-        // Processa a fila de poll para esta página
         const queueResult = await queue.process(activeVehicles);
 
         totalPolled += queueResult.polled;
@@ -85,26 +70,13 @@ class PollOrchestrator {
         );
       });
 
-      // 4. Detecção de veículos recuperados
-      // Veículos com status 'pending' que NÃO apareceram nesta varredura = voltaram a comunicar
-      const pendingVehicles = await PollHistory.find({ status: "pending" });
-      let totalRecovered = 0;
+      // Detecção de veículos recuperados — com verificação real via API
+      const totalRecovered = await PollOrchestrator.#checkRecovered(
+        PollHistory,
+        scanner,
+        offlineVehicleIds
+      );
 
-      for (const ph of pendingVehicles) {
-        if (!offlineVehicleIds.has(ph.vehicleId)) {
-          ph.status = "recovered";
-          ph.totalAttempts = 0;
-          ph.attempts = [];
-          await ph.save();
-          totalRecovered++;
-
-          console.log(
-            `[PollOrchestrator] ✅ RECUPERADO: ${ph.vin || ph.vehicleId}`
-          );
-        }
-      }
-
-      // 5. Atualiza log de execução
       execution.finishedAt = new Date();
       execution.status = "completed";
       execution.totalScanned = scanStats.totalScanned;
@@ -148,8 +120,81 @@ class PollOrchestrator {
   }
 
   /**
-   * Retorna se uma execução está em andamento.
+   * Para cada veículo pending que NÃO apareceu na varredura offline,
+   * consulta a API para verificar se o lastKnownEventUtcTimestamp
+   * é recente (dentro de RECOVERED_WINDOW_MS).
+   *
+   * Um veículo só é marcado recovered se a API confirmar que ele
+   * reportou dentro da janela esperada. Caso contrário, permanece pending.
+   *
+   * @param {Model} PollHistory
+   * @param {PollScanner} scanner
+   * @param {Set<string>} offlineVehicleIds - IDs que ainda estão offline nesta execução
+   * @returns {number} total de veículos confirmados como recovered
    */
+  static async #checkRecovered(PollHistory, scanner, offlineVehicleIds) {
+    // Candidatos: pending e que não apareceram na lista de offline
+    const pendingVehicles = await PollHistory.find({ status: "pending" });
+    const candidates = pendingVehicles.filter(
+      (ph) => !offlineVehicleIds.has(ph.vehicleId)
+    );
+
+    if (candidates.length === 0) {
+      console.log("[PollOrchestrator] Nenhum candidato a recovered para verificar.");
+      return 0;
+    }
+
+    console.log(
+      `[PollOrchestrator] Verificando ${candidates.length} candidatos a recovered via API...`
+    );
+
+    const cutoff = new Date(Date.now() - RECOVERED_WINDOW_MS);
+    let totalRecovered = 0;
+
+    for (const ph of candidates) {
+      const timestamp = await scanner.fetchVehicleTimestamp(ph.vehicleId);
+
+      if (!timestamp) {
+        // Não conseguiu consultar — mantém pending, não assume nada
+        console.log(
+          `[PollOrchestrator] ⚠️ Sem timestamp para ${ph.vin || ph.vehicleId} — mantendo pending`
+        );
+        await new Promise((r) => setTimeout(r, RECOVERED_CHECK_DELAY_MS));
+        continue;
+      }
+
+      const lastEvent = new Date(timestamp);
+      const isRecovered = lastEvent > cutoff;
+
+      if (isRecovered) {
+        ph.status = "recovered";
+        ph.recoveredAt = lastEvent;
+        ph.totalAttempts = 0;
+        ph.attempts = [];
+        await ph.save();
+        totalRecovered++;
+
+        console.log(
+          `[PollOrchestrator] ✅ RECUPERADO: ${ph.vin || ph.vehicleId} ` +
+          `(último evento: ${lastEvent.toISOString()})`
+        );
+      } else {
+        console.log(
+          `[PollOrchestrator] ⏳ Ainda sem retorno: ${ph.vin || ph.vehicleId} ` +
+          `(último evento: ${lastEvent.toISOString()})`
+        );
+      }
+
+      await new Promise((r) => setTimeout(r, RECOVERED_CHECK_DELAY_MS));
+    }
+
+    console.log(
+      `[PollOrchestrator] Verificação concluída: ${totalRecovered}/${candidates.length} confirmados recovered`
+    );
+
+    return totalRecovered;
+  }
+
   static isRunning() {
     return isRunning;
   }

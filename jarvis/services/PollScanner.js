@@ -3,11 +3,6 @@ import fetch from "node-fetch";
 const API_URL = "https://live.mzoneweb.net/mzone62.api";
 const PAGE_SIZE = 10000;
 
-/**
- * Verifica se um veículo está desativado.
- * - description começa com REMOVIDO, CANCELADO V, ou DESATIVADO
- * - unit_Description contém _ (unidade desassociada)
- */
 function isVehicleDeactivated(vehicle) {
   const desc = (vehicle.description || "").toUpperCase().trim();
   const unitDesc = (vehicle.unit_Description || "").trim();
@@ -21,22 +16,11 @@ function isVehicleDeactivated(vehicle) {
   return false;
 }
 
-/**
- * Varre a base de veículos usando $filter OData para buscar
- * SOMENTE veículos que não comunicam há mais de 72h.
- * Retorna veículos ativos (não desativados) paginados.
- */
 class PollScanner {
   constructor({ tokenManager }) {
     this.tokenManager = tokenManager;
   }
 
-  /**
-   * Busca uma página de veículos offline.
-   * @param {string} cutoffDate 
-   * @param {number} skip - Número de registros para pular
-   * @returns {{ vehicles: Array, hasMore: boolean }}
-   */
   async fetchPage(cutoffDate, skip = 0) {
     const token = await this.tokenManager.getToken();
 
@@ -67,14 +51,6 @@ class PollScanner {
     };
   }
 
-  /**
-   * Varre todas as páginas e retorna apenas veículos ATIVOS offline 72h+.
-   * Processa página a página para economia de memória.
-   * 
-   * @param {Function} onPage - Callback chamado a cada página com os veículos ativos filtrados.
-   *                            Assinatura: async (activeVehicles, pageStats) => void
-   * @returns {{ totalScanned, totalActive, totalDeactivated, pagesProcessed }}
-   */
   async scan(onPage) {
     const cutoffDate = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
     let skip = 0;
@@ -93,7 +69,6 @@ class PollScanner {
       totalScanned += vehicles.length;
       pagesProcessed++;
 
-      // Filtra desativados
       const active = [];
       for (const v of vehicles) {
         if (isVehicleDeactivated(v)) {
@@ -110,7 +85,6 @@ class PollScanner {
         `${vehicles.length - active.length} desativados`
       );
 
-      // Chama callback com veículos ativos desta página
       if (active.length > 0 && onPage) {
         await onPage(active, { page: pagesProcessed, totalScanned });
       }
@@ -123,6 +97,41 @@ class PollScanner {
     console.log(`[PollScanner] Varredura concluída:`, stats);
 
     return stats;
+  }
+
+  /**
+   * Busca o lastKnownEventUtcTimestamp de um veículo específico.
+   * Usado para verificar se um veículo pending realmente voltou a reportar.
+   * 
+   * @param {string} vehicleId
+   * @returns {string|null} ISO timestamp ou null em caso de erro
+   */
+  async fetchVehicleTimestamp(vehicleId) {
+    const token = await this.tokenManager.getToken();
+
+    try {
+      const res = await fetch(
+        `${API_URL}/Vehicles(${vehicleId})?$select=id,lastKnownEventUtcTimestamp`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!res.ok) {
+        console.warn(`[PollScanner] Erro ao buscar timestamp de ${vehicleId}: HTTP ${res.status}`);
+        return null;
+      }
+
+      const data = await res.json();
+      return data.lastKnownEventUtcTimestamp || null;
+    } catch (err) {
+      console.warn(`[PollScanner] Falha de rede ao buscar ${vehicleId}: ${err.message}`);
+      return null;
+    }
   }
 }
 

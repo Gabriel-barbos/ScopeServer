@@ -20,9 +20,6 @@ const PollHistorySchema = new mongoose.Schema(
     attempts: [AttemptSchema],
     totalAttempts: { type: Number, default: 0 },
 
-    // 'pending' = recebeu poll, aguardando retorno
-    // 'recovered' = voltou a comunicar após poll
-    // 'maintenance' = 3 polls sem retorno, precisa manutenção
     status: {
       type: String,
       enum: ["pending", "recovered", "maintenance"],
@@ -33,11 +30,13 @@ const PollHistorySchema = new mongoose.Schema(
     lastPollDate: { type: Date },
     lastSeenOffline: { type: Date },
     flaggedAt: { type: Date },
+
+    // Data em que o veículo foi confirmado como recuperado via verificação da API
+    recoveredAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
 
-// Index composto para busca eficiente
 PollHistorySchema.index({ status: 1, totalAttempts: 1 });
 
 let PollHistory = null;
