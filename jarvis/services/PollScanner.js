@@ -51,7 +51,8 @@ class PollScanner {
     };
   }
 
-  async scan(onPage) {
+  async scan(onPage, options = {}) {
+    const { shouldStop = () => false, onProgress = null } = options;
     const cutoffDate = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
     let skip = 0;
     let totalScanned = 0;
@@ -62,6 +63,7 @@ class PollScanner {
     console.log(`[PollScanner] Iniciando varredura. Cutoff: ${cutoffDate}`);
 
     while (true) {
+      if (shouldStop()) break;
       console.log(`[PollScanner] Buscando página ${pagesProcessed + 1} (skip=${skip})...`);
 
       const { vehicles, hasMore } = await this.fetchPage(cutoffDate, skip);
@@ -87,6 +89,10 @@ class PollScanner {
 
       if (active.length > 0 && onPage) {
         await onPage(active, { page: pagesProcessed, totalScanned });
+      }
+
+      if (onProgress) {
+        await onProgress({ totalScanned, totalActive, totalDeactivated, pagesProcessed });
       }
 
       if (!hasMore) break;

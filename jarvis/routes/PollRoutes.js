@@ -11,9 +11,10 @@ router.get("/status", async (req, res) => {
   try {
     const PollExecution = await getPollExecutionModel();
     const lastExecution = await PollExecution.findOne().sort({ startedAt: -1 });
+    const runtime = PollOrchestrator.getRuntimeStatus();
 
     res.json({
-      isRunning: PollOrchestrator.isRunning(),
+      ...runtime,
       lastExecution: lastExecution || null,
     });
   } catch (err) {
@@ -39,7 +40,9 @@ router.get("/executions", async (req, res) => {
 router.get("/history", async (req, res) => {
   try {
     const PollHistory = await getPollHistoryModel();
-    const { status, page = 1, limit = 50 } = req.query;
+    const { status } = req.query;
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 500);
 
     const filter = {};
     if (status) filter.status = status;
@@ -48,14 +51,15 @@ router.get("/history", async (req, res) => {
     const items = await PollHistory.find(filter)
       .sort({ lastPollDate: -1 })
       .skip((page - 1) * limit)
-      .limit(Number(limit));
+      .limit(limit)
+      .lean();
 
     res.json({
       items,
       pagination: {
         total,
-        page: Number(page),
-        limit: Number(limit),
+        page,
+        limit,
         pages: Math.ceil(total / limit),
       },
     });
@@ -68,10 +72,26 @@ router.get("/history", async (req, res) => {
 router.get("/history/maintenance", async (req, res) => {
   try {
     const PollHistory = await getPollHistoryModel();
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 500);
+    const filter = { status: "maintenance" };
+    const total = await PollHistory.countDocuments(filter);
     const items = await PollHistory.find({ status: "maintenance" })
-      .sort({ flaggedAt: -1 });
+      .sort({ flaggedAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
 
-    res.json({ count: items.length, items });
+    res.json({
+      count: items.length,
+      items,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -199,6 +219,16 @@ router.post("/run", async (req, res) => {
   }
 });
 
+// POST /api/jarvis/poll/stop — Solicita parada segura da execucao atual
+router.post("/stop", async (req, res) => {
+  try {
+    const result = await PollOrchestrator.stop();
+    res.status(result.stopped ? 202 : 409).json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/jarvis/poll/reset/:vehicleId — Reseta histórico de um veículo
 router.post("/reset/:vehicleId", async (req, res) => {
   try {
@@ -228,7 +258,7 @@ router.post("/cleanup", async (req, res) => {
   try {
     const PollExecution = await getPollExecutionModel();
     const stuck = await PollExecution.updateMany(
-      { status: "running" },
+      { status: { $in: ["running", "stopping"] } },
       {
         status: "failed",
         error: "Execução interrompida (cleanup manual)",

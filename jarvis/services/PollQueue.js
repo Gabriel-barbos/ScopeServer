@@ -2,8 +2,8 @@ import fetch from "node-fetch";
 import getPollHistoryModel from "../models/PollHistory.js";
 
 const API_URL = "https://live.mzoneweb.net/mzone62.api";
-const DELAY_MS = 500; 
-const MAX_ATTEMPTS = 3; 
+const DELAY_MS = 500;
+const MAX_ATTEMPTS = 3;
 
 class PollQueue {
   constructor({ tokenManager }) {
@@ -11,23 +11,20 @@ class PollQueue {
   }
 
   /**
-   * Envia _.poll para um único veículo.
+   * Envia _.poll para um unico veiculo.
    * @returns {{ success: boolean, httpStatus: number, error?: string }}
    */
   async sendPoll(vehicleId) {
     const token = await this.tokenManager.getToken();
 
     try {
-      const res = await fetch(
-        `${API_URL}/Vehicles(${vehicleId})/_.poll`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const res = await fetch(`${API_URL}/Vehicles(${vehicleId})/_.poll`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       return {
         success: res.ok,
@@ -44,26 +41,41 @@ class PollQueue {
   }
 
   /**
-   * Processa um array de veículos:
-   * - Consulta histórico no MongoDB
+   * Processa um array de veiculos:
+   * - Busca historicos em lote para evitar 1 query Mongo por veiculo
    * - Envia poll se < 3 tentativas
-   * - Marca manutenção se >= 3 tentativas
-   * 
-   * @param {Array} vehicles - Veículos ativos offline
+   * - Marca manutencao se >= 3 tentativas
+   *
+   * @param {Array} vehicles - Veiculos ativos offline
    * @returns {{ polled, skipped, newMaintenance, errors }}
    */
-  async process(vehicles) {
+  async process(vehicles, options = {}) {
+    const { shouldStop = () => false, onProgress = null } = options;
     const PollHistory = await getPollHistoryModel();
 
     let polled = 0;
     let skipped = 0;
     let newMaintenance = 0;
     let errors = 0;
+    let processed = 0;
+
+    const ids = vehicles.map((vehicle) => vehicle.id);
+    const existing = await PollHistory.find({ vehicleId: { $in: ids } });
+    const historiesByVehicleId = new Map(
+      existing.map((history) => [history.vehicleId, history])
+    );
+
+    const emitProgress = async () => {
+      if (onProgress) {
+        await onProgress({ processed, polled, skipped, newMaintenance, errors });
+      }
+    };
 
     for (const vehicle of vehicles) {
+      if (shouldStop()) break;
+
       try {
-        // Busca ou cria histórico deste veículo
-        let history = await PollHistory.findOne({ vehicleId: vehicle.id });
+        let history = historiesByVehicleId.get(vehicle.id);
 
         if (!history) {
           history = new PollHistory({
@@ -72,36 +84,36 @@ class PollQueue {
             description: vehicle.description,
             status: "pending",
           });
+          historiesByVehicleId.set(vehicle.id, history);
         }
 
-        // Atualiza última vez visto offline
         history.lastSeenOffline = new Date();
 
-        // Se já está em manutenção, pula
         if (history.status === "maintenance") {
           skipped++;
           await history.save();
+          processed++;
+          await emitProgress();
           continue;
         }
 
-        // Se já tem 3 tentativas, marca como manutenção (na 4ª vez)
         if (history.totalAttempts >= MAX_ATTEMPTS) {
           history.status = "maintenance";
           history.flaggedAt = new Date();
           await history.save();
           newMaintenance++;
+          processed++;
+          await emitProgress();
 
           console.log(
-            `[PollQueue] 🔧 MANUTENÇÃO: ${vehicle.vin || vehicle.id} ` +
-            `(${history.totalAttempts} tentativas sem retorno)`
+            `[PollQueue] MANUTENCAO: ${vehicle.vin || vehicle.id} ` +
+              `(${history.totalAttempts} tentativas sem retorno)`
           );
           continue;
         }
 
-        // Envia o poll
         const result = await this.sendPoll(vehicle.id);
 
-        // Registra a tentativa
         history.attempts.push({
           date: new Date(),
           success: result.success,
@@ -120,15 +132,19 @@ class PollQueue {
         } else {
           errors++;
           console.log(
-            `[PollQueue] ❌ Erro ao pollar ${vehicle.vin}: ` +
-            `HTTP ${result.httpStatus} - ${result.error}`
+            `[PollQueue] Erro ao pollar ${vehicle.vin}: ` +
+              `HTTP ${result.httpStatus} - ${result.error}`
           );
         }
 
-        // Delay entre polls
+        processed++;
+        await emitProgress();
+
         await new Promise((r) => setTimeout(r, DELAY_MS));
       } catch (err) {
         errors++;
+        processed++;
+        await emitProgress();
         console.error(`[PollQueue] Erro inesperado em ${vehicle.id}:`, err.message);
       }
     }

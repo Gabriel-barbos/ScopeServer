@@ -26,10 +26,13 @@ CRON (Ter & Sex 08:00)
   │     ├─ Se < 3 tentativas → envia POST _.poll
   │     └─ Se = 3 tentativas → marca como MANUTENÇÃO
   │
-  ├─ 5. Detecta veículos RECUPERADOS
-  │     └─ Estavam pending mas não apareceram como offline → voltaram!
+  ├─ 5. Detecta candidatos a RECUPERADOS
+  │     └─ Pending ausente da varredura → consulta individual confirma timestamp recente
   │
-  └─ 6. Salva log de execução no MongoDB
+  ├─ 6. Pending ausente sem confirmação de recovered
+  │     └─ Timestamp antigo → segue para poll | erro/sem timestamp → permanece pending sem poll extra
+  │
+  └─ 7. Salva log de execução no MongoDB
 ```
 
 ### Ciclo de Vida de um Veículo
@@ -93,17 +96,26 @@ GET /api/jarvis/poll/status
 ```json
 {
   "isRunning": true,
+  "stopRequested": false,
+  "currentExecutionId": "...",
   "lastExecution": {
     "_id": "...",
     "startedAt": "2026-05-08T17:57:38.338Z",
     "trigger": "manual",
     "status": "running",
+    "stage": "checking_recovered",
+    "message": "Verificando recovered: 1200/3500",
     "totalScanned": 47853,
+    "totalActive": 7150,
+    "totalDeactivated": 40703,
     "totalPolled": 1520,
     "totalSkipped": 12,
     "totalNewMaintenance": 3,
     "totalRecovered": 45,
     "totalErrors": 2,
+    "totalRecoveryCandidates": 3500,
+    "totalRecoveryChecked": 1200,
+    "totalRecoveryUnknown": 8,
     "tokenRefreshCount": 1,
     "pagesProcessed": 5
   }
@@ -132,7 +144,22 @@ curl http://localhost:5000/api/jarvis/poll/executions
 
 ---
 
-### 4. Histórico de Veículos
+### 4. Parar Execução Atual
+
+Solicita parada segura da execução em andamento. O processo termina no próximo ponto seguro entre páginas, polls ou verificações.
+
+```
+POST /api/jarvis/poll/stop
+```
+
+**cURL:**
+```
+curl -X POST http://localhost:5000/api/jarvis/poll/stop
+```
+
+---
+
+### 5. Histórico de Veículos
 
 Lista veículos que receberam poll, com paginação e filtro por status.
 
@@ -154,18 +181,18 @@ curl "http://localhost:5000/api/jarvis/poll/history?status=pending&page=1&limit=
 
 ---
 
-### 5. Veículos em Manutenção
+### 6. Veículos em Manutenção
 
-Atalho para listar só os veículos que falharam em 3 tentativas.
+Atalho paginado para listar só os veículos que falharam em 3 tentativas.
 
 ```
-GET /api/jarvis/poll/history/maintenance
+GET /api/jarvis/poll/history/maintenance?page=1&limit=50
 ```
 
 **Resposta:**
 ```json
 {
-  "count": 15,
+  "count": 50,
   "items": [
     {
       "vehicleId": "...",
@@ -176,18 +203,24 @@ GET /api/jarvis/poll/history/maintenance
       "flaggedAt": "2026-05-22T09:00:00.000Z",
       "attempts": [...]
     }
-  ]
+  ],
+  "pagination": {
+    "total": 7000,
+    "page": 1,
+    "limit": 50,
+    "pages": 140
+  }
 }
 ```
 
 **cURL:**
 ```
-curl http://localhost:5000/api/jarvis/poll/history/maintenance
+curl "http://localhost:5000/api/jarvis/poll/history/maintenance?page=1&limit=50"
 ```
 
 ---
 
-### 6. Resetar Veículo
+### 7. Resetar Veículo
 
 Remove um veículo da lista de manutenção (ex: após troca de equipamento).
 
@@ -202,7 +235,7 @@ curl -X POST http://localhost:5000/api/jarvis/poll/reset/5725fd04-f625-4c13-8ff3
 
 ---
 
-### 7. Cleanup (Execuções travadas)
+### 8. Cleanup (Execuções travadas)
 
 Corrige execuções que ficaram em "running" por crash do servidor.
 
@@ -217,7 +250,7 @@ curl -X POST http://localhost:5000/api/jarvis/poll/cleanup
 
 ---
 
-### 8. Limpar Tudo (⚠️ Testes)
+### 9. Limpar Tudo (⚠️ Testes)
 
 Deleta TODOS os dados de poll (históricos + execuções). Usar só em desenvolvimento.
 
