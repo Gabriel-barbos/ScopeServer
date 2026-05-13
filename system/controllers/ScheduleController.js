@@ -392,7 +392,7 @@ class ScheduleController {
 
       let value = schedule[key];
 
-      if (dateFields.has(key))       value = parseBRDate(value) ?? parseDate(value);
+      if (dateFields.has(key))       value = parseDate(value);
       else if (normalizers[key])     value = normalizers[key](value);
 
       if (value != null) updateData[key] = value;
