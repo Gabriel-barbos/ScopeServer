@@ -172,6 +172,7 @@ function getScheduleColumns() {
     { header: "Data de Criação",     key: "createdAt",        width: 18, numFmt: DATE_FMT },
     { header: "Data do Pedido",      key: "orderDate",        width: 18, numFmt: DATE_FMT },
     { header: "Motivo",              key: "reason",           width: 18 },
+    { header: "Situação",            key: "situation",        width: 18 },
   ];
 }
 
@@ -254,6 +255,7 @@ function scheduleToRow(s) {
     createdBy:       s.createdBy       || "",
     createdAt:       toDate(s.createdAt),
     reason:          REASON_MAP[s.reason] || s.reason || "",
+    situation:       s.situation       || "",
   };
 }
 
