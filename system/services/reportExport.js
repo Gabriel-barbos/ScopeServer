@@ -2,6 +2,10 @@ import ExcelJS from "exceljs";
 import getScheduleModel from "../models/Schedule.js";
 import getServiceModel from "../models/Service.js";
 import getServiceLegacyModel from "../models/ServiceLegacy.js";
+import {
+  buildClientMatchIdsMany,
+  buildLegacyClientNamesFromObjectIds,
+} from "./reportAggregations.js";
 
 
 const SERVICE_TYPE_MAP = {
@@ -80,6 +84,27 @@ function buildDateRange(dateFrom, dateTo) {
       { validatedAt: null,          ...makeRange("createdAt")   },
     ],
   };
+}
+
+/** Combina filtro de data com filtro de cliente (ObjectId ou nome legado). */
+function mergeMongoFilter(dateFilter, extraClause) {
+  const hasDate   = dateFilter && Object.keys(dateFilter).length > 0;
+  const hasExtra  = extraClause && Object.keys(extraClause).length > 0;
+
+  if (!hasDate && !hasExtra) return {};
+  if (!hasDate) return extraClause;
+  if (!hasExtra) return dateFilter;
+  return { $and: [dateFilter, extraClause] };
+}
+
+function clientObjectIdClause(clientObjectIds) {
+  if (clientObjectIds === null) return null;
+  return { client: { $in: clientObjectIds } };
+}
+
+function legacyClientNameClause(legacyClientNames) {
+  if (legacyClientNames === null) return null;
+  return { client: { $in: legacyClientNames } };
 }
 
 function styleHeaderRow(row, color) {
@@ -281,7 +306,13 @@ async function streamCursorToSheet(cursor, sheet, rowTransformer, options = {}) 
 }
 
 export async function streamExcelExport(
-  { type, includeOldData = false, dateFrom = null, dateTo = null },
+  {
+    type,
+    includeOldData = false,
+    dateFrom = null,
+    dateTo = null,
+    clientIds = null,
+  },
   res
 ) {
   const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
@@ -293,16 +324,38 @@ export async function streamExcelExport(
   workbook.creator = "Sistema";
   workbook.created = new Date();
 
+  const hasClientFilter = Array.isArray(clientIds) && clientIds.length > 0;
+  const clientObjectIds = hasClientFilter
+    ? await buildClientMatchIdsMany(clientIds)
+    : null;
+  const legacyClientNames = hasClientFilter
+    ? await buildLegacyClientNamesFromObjectIds(clientObjectIds)
+    : null;
+
+  const exportOptions = {
+    includeOldData,
+    dateFrom,
+    dateTo,
+    clientObjectIds,
+    legacyClientNames,
+  };
+
   if (type === "services") {
-    await streamServices(workbook, { includeOldData, dateFrom, dateTo });
+    await streamServices(workbook, exportOptions);
   } else {
-    await streamSchedules(workbook, { dateFrom, dateTo });
+    await streamSchedules(workbook, exportOptions);
   }
 
   await workbook.commit();
 }
 
-async function streamServices(workbook, { includeOldData, dateFrom, dateTo }) {
+async function streamServices(workbook, {
+  includeOldData,
+  dateFrom,
+  dateTo,
+  clientObjectIds = null,
+  legacyClientNames = null,
+}) {
   const sheet   = workbook.addWorksheet("Serviços");
   sheet.columns = getServiceColumns(includeOldData);
 
@@ -331,8 +384,9 @@ async function streamServices(workbook, { includeOldData, dateFrom, dateTo }) {
 
   const Service    = await getServiceModel();
   const dateFilter = buildDateRange(dateFrom, dateTo);
+  const filter     = mergeMongoFilter(dateFilter, clientObjectIdClause(clientObjectIds));
 
-  const currentCursor = Service.find(dateFilter)
+  const currentCursor = Service.find(filter)
     .populate({ path: "client", populate: { path: "parent", select: "name" } })
     .populate("product", "name")
     .sort({ createdAt: -1 })
@@ -348,7 +402,11 @@ async function streamServices(workbook, { includeOldData, dateFrom, dateTo }) {
 
   if (includeOldData) {
     const ServiceLegacy = await getServiceLegacyModel();
-    const legacyFilter  = buildDateRange(dateFrom, dateTo, "validatedAt");
+    const legacyDateFilter = buildDateRange(dateFrom, dateTo);
+    const legacyFilter     = mergeMongoFilter(
+      legacyDateFilter,
+      legacyClientNameClause(legacyClientNames)
+    );
 
     const legacyCursor = ServiceLegacy.find(legacyFilter)
       .sort({ validatedAt: -1 })
@@ -367,7 +425,11 @@ async function streamServices(workbook, { includeOldData, dateFrom, dateTo }) {
   sheet.commit();
 }
 
-async function streamSchedules(workbook, { dateFrom, dateTo }) {
+async function streamSchedules(workbook, {
+  dateFrom,
+  dateTo,
+  clientObjectIds = null,
+}) {
   const sheet   = workbook.addWorksheet("Agendamentos");
   sheet.columns = getScheduleColumns();
 
@@ -377,8 +439,9 @@ async function streamSchedules(workbook, { dateFrom, dateTo }) {
 
   const Schedule   = await getScheduleModel();
   const dateFilter = buildDateRange(dateFrom, dateTo);
+  const filter     = mergeMongoFilter(dateFilter, clientObjectIdClause(clientObjectIds));
 
-  const cursor = Schedule.find(dateFilter)
+  const cursor = Schedule.find(filter)
     .populate({ path: "client", populate: { path: "parent", select: "name" } })
     .populate("product", "name")
     .sort({ createdAt: -1 })

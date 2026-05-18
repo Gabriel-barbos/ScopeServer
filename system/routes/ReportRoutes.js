@@ -1,6 +1,7 @@
 import { Router } from "express";
 import ReportController from "../controllers/ReportController.js";
 import { streamExcelExport } from "../services/reportExport.js";
+import { parseClientIdsFromInput } from "../services/reportAggregations.js";
 
 const router = Router();
 
@@ -10,12 +11,14 @@ router.post("/export", ReportController.exportData);
 // GET /api/system/reports/export-test?type=services&includeOldData=true
 router.get("/export-test", async (req, res) => {
   const { type = "services", includeOldData = "false", dateFrom, dateTo } = req.query;
+  const clientIds = parseClientIdsFromInput(req.query);
 
   const params = {
     type,
     includeOldData: includeOldData === "true",
     dateFrom: dateFrom || null,
     dateTo:   dateTo   || null,
+    clientIds: clientIds.length > 0 ? clientIds : null,
   };
 
   console.log("🧪 [export-test] iniciando:", params);

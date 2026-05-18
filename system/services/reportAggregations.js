@@ -77,6 +77,65 @@ export async function buildClientMatchIds(clientId) {
   return [scope.parentId, ...subclients.map((s) => new ObjectId(s._id))];
 }
 
+/**
+ * Normaliza clientIds vindos de body ou query.
+ * Aceita clientIds (array ou string CSV) e clientId singular .
+ */
+export function parseClientIdsFromInput(input = {}) {
+  const { clientIds, clientId } = input;
+
+  if (clientIds != null && clientIds !== "") {
+    if (Array.isArray(clientIds)) {
+      return [...new Set(clientIds.map(String).map((s) => s.trim()).filter(Boolean))];
+    }
+    if (typeof clientIds === "string") {
+      return [...new Set(clientIds.split(",").map((s) => s.trim()).filter(Boolean))];
+    }
+  }
+
+  if (clientId != null && clientId !== "") {
+    return [String(clientId).trim()].filter(Boolean);
+  }
+
+  return [];
+}
+
+/**
+ * Expande um ou mais clientIds para ObjectIds usados em Service/Schedule.
+ * Retorna null se nenhum filtro foi solicitado; [] se IDs inválidos/não encontrados.
+ */
+export async function buildClientMatchIdsMany(clientIds) {
+  const unique = parseClientIdsFromInput({ clientIds });
+  if (unique.length === 0) return null;
+
+  const merged = new Set();
+  for (const id of unique) {
+    const ids = await buildClientMatchIds(id);
+    if (ids) ids.forEach((oid) => merged.add(oid.toString()));
+  }
+
+  return [...merged].map((s) => new ObjectId(s));
+}
+
+/**
+ * Nomes de cliente para filtrar ServiceLegacy (campo client é string).
+ * Usa os mesmos ObjectIds resolvidos por buildClientMatchIdsMany.
+ */
+export async function buildLegacyClientNamesFromObjectIds(objectIds) {
+  if (objectIds === null) return null;
+  if (objectIds.length === 0) return [];
+
+  const { default: getClientModel } = await import("../models/Client.js");
+  const Client = await getClientModel();
+  const docs = await Client.find({ _id: { $in: objectIds } }, "name").lean();
+  return [...new Set(docs.map((d) => d.name).filter(Boolean))];
+}
+
+export async function buildLegacyClientNames(clientIds) {
+  const objectIds = await buildClientMatchIdsMany(clientIds);
+  return buildLegacyClientNamesFromObjectIds(objectIds);
+}
+
 
 const resolveClientStages = [
   {

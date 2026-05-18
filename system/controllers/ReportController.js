@@ -1,6 +1,7 @@
 import {
   buildDateFilter,
   buildClientMatchIds,
+  parseClientIdsFromInput,
   servicesByType,
   schedulesByStatus,
   pendingByClient,
@@ -65,6 +66,7 @@ class ReportController {
   exportData = async (req, res) => {
     try {
       const { type, includeOldData, dateFrom, dateTo } = req.body;
+      const clientIds = parseClientIdsFromInput(req.body);
 
       if (!["schedules", "services"].includes(type)) {
         return res.status(400).json({ error: "Tipo inválido. Use 'schedules' ou 'services'" });
@@ -76,7 +78,8 @@ class ReportController {
 
       const timestamp = new Date().toISOString().slice(0, 10);
       const suffix    = includeOldData ? "-com-legado" : "";
-      const filename  = `${type}-report${suffix}-${timestamp}.xlsx`;
+      const clientSuffix = clientIds.length > 0 ? `-clientes-${clientIds.length}` : "";
+      const filename  = `${type}-report${suffix}${clientSuffix}-${timestamp}.xlsx`;
 
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
@@ -87,6 +90,7 @@ class ReportController {
           includeOldData: includeOldData || false,
           dateFrom:       dateFrom || null,
           dateTo:         dateTo   || null,
+          clientIds:      clientIds.length > 0 ? clientIds : null,
         },
         res
       );

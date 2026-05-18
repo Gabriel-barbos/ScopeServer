@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { parseClientIdsFromInput } from "../services/reportAggregations.js";
+
 const router = Router();
 
 router.get("/export-test", async (req, res) => {
@@ -8,12 +10,14 @@ router.get("/export-test", async (req, res) => {
     dateFrom,
     dateTo,
   } = req.query;
+  const clientIds = parseClientIdsFromInput(req.query);
 
   const params = {
     type,
     includeOldData: includeOldData === "true",
     dateFrom: dateFrom || null,
     dateTo:   dateTo   || null,
+    clientIds: clientIds.length > 0 ? clientIds : null,
   };
 
   console.log("🧪 [export-test] params:", params);
