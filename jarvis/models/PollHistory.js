@@ -22,7 +22,7 @@ const PollHistorySchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["pending", "recovered", "maintenance"],
+      enum: ["pending", "recovered", "maintenance", "ignored"],
       default: "pending",
       index: true,
     },
@@ -30,6 +30,9 @@ const PollHistorySchema = new mongoose.Schema(
     lastPollDate: { type: Date },
     lastSeenOffline: { type: Date },
     flaggedAt: { type: Date },
+    ignoredAt: { type: Date },
+    ignoredReason: { type: String },
+    lastMaintenanceRevalidatedAt: { type: Date },
 
     // Data em que o veículo foi confirmado como recuperado via verificação da API
     recoveredAt: { type: Date, default: null },

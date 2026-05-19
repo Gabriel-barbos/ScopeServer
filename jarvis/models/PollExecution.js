@@ -29,6 +29,7 @@ const PollExecutionSchema = new mongoose.Schema(
     totalDeactivated: { type: Number, default: 0 },
     totalPolled: { type: Number, default: 0 },
     totalSkipped: { type: Number, default: 0 },
+    totalIgnored: { type: Number, default: 0 },
     totalNewMaintenance: { type: Number, default: 0 },
     totalRecovered: { type: Number, default: 0 },
     totalErrors: { type: Number, default: 0 },

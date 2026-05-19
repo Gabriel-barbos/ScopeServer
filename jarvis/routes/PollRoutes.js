@@ -229,6 +229,27 @@ router.post("/stop", async (req, res) => {
   }
 });
 
+// POST /api/jarvis/poll/history/maintenance/revalidate
+// Revalida manutencoes existentes e move removidos/cancelados/desativados para ignored.
+router.post("/history/maintenance/revalidate", async (req, res) => {
+  try {
+    if (PollOrchestrator.isRunning()) {
+      return res.status(409).json({
+        error: "Auto Poll em andamento. Pare ou aguarde finalizar antes de revalidar manutencoes.",
+      });
+    }
+
+    const result = await PollOrchestrator.revalidateMaintenance({
+      limit: req.query.limit,
+      dryRun: req.query.dryRun,
+    });
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/jarvis/poll/reset/:vehicleId — Reseta histórico de um veículo
 router.post("/reset/:vehicleId", async (req, res) => {
   try {

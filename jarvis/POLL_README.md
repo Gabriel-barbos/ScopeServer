@@ -170,7 +170,7 @@ GET /api/jarvis/poll/history?status=pending&page=1&limit=50
 **Parâmetros query:**
 | Param | Tipo | Default | Descrição |
 |-------|------|---------|-----------|
-| `status` | string | (todos) | `pending`, `recovered`, `maintenance` |
+| `status` | string | (todos) | `pending`, `recovered`, `maintenance`, `ignored` |
 | `page` | number | 1 | Página atual |
 | `limit` | number | 50 | Itens por página |
 
@@ -220,7 +220,28 @@ curl "http://localhost:5000/api/jarvis/poll/history/maintenance?page=1&limit=50"
 
 ---
 
-### 7. Resetar Veículo
+### 7. Revalidacao de Manutencoes
+
+Revalida veículos já marcados como manutenção contra o estado atual da API. Se o veículo agora estiver `REMOVIDO`, `CANCELADO`, `CANCELAMENTO`, `DESATIVADO` ou com unidade desassociada, o histórico muda para `ignored`.
+
+```
+POST /api/jarvis/poll/history/maintenance/revalidate?limit=500
+```
+
+Para simular sem alterar o banco:
+
+```
+POST /api/jarvis/poll/history/maintenance/revalidate?limit=500&dryRun=true
+```
+
+**cURL:**
+```
+curl -X POST "http://localhost:5000/api/jarvis/poll/history/maintenance/revalidate?limit=500"
+```
+
+---
+
+### 8. Resetar Veículo
 
 Remove um veículo da lista de manutenção (ex: após troca de equipamento).
 
@@ -235,7 +256,7 @@ curl -X POST http://localhost:5000/api/jarvis/poll/reset/5725fd04-f625-4c13-8ff3
 
 ---
 
-### 8. Cleanup (Execuções travadas)
+### 9. Cleanup (Execuções travadas)
 
 Corrige execuções que ficaram em "running" por crash do servidor.
 
@@ -250,7 +271,7 @@ curl -X POST http://localhost:5000/api/jarvis/poll/cleanup
 
 ---
 
-### 9. Limpar Tudo (⚠️ Testes)
+### 10. Limpar Tudo (⚠️ Testes)
 
 Deleta TODOS os dados de poll (históricos + execuções). Usar só em desenvolvimento.
 

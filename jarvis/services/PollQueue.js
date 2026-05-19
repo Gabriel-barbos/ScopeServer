@@ -1,5 +1,6 @@
 import fetch from "node-fetch";
 import getPollHistoryModel from "../models/PollHistory.js";
+import { isVehicleDeactivated } from "./PollScanner.js";
 
 const API_URL = "https://live.mzoneweb.net/mzone62.api";
 const DELAY_MS = 500;
@@ -40,6 +41,39 @@ class PollQueue {
     }
   }
 
+  async fetchCurrentVehicle(vehicleId) {
+    const token = await this.tokenManager.getToken();
+
+    try {
+      const res = await fetch(
+        `${API_URL}/Vehicles(${vehicleId})?$select=id,description,vin,unit_Description,lastKnownEventUtcTimestamp`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.warn(
+          `[PollQueue] Nao foi possivel revalidar ${vehicleId} antes da manutencao: ` +
+            `HTTP ${res.status} - ${text}`
+        );
+        return null;
+      }
+
+      return await res.json();
+    } catch (err) {
+      console.warn(
+        `[PollQueue] Falha de rede ao revalidar ${vehicleId} antes da manutencao: ${err.message}`
+      );
+      return null;
+    }
+  }
+
   /**
    * Processa um array de veiculos:
    * - Busca historicos em lote para evitar 1 query Mongo por veiculo
@@ -47,7 +81,7 @@ class PollQueue {
    * - Marca manutencao se >= 3 tentativas
    *
    * @param {Array} vehicles - Veiculos ativos offline
-   * @returns {{ polled, skipped, newMaintenance, errors }}
+   * @returns {{ polled, skipped, ignored, newMaintenance, errors }}
    */
   async process(vehicles, options = {}) {
     const { shouldStop = () => false, onProgress = null } = options;
@@ -55,6 +89,7 @@ class PollQueue {
 
     let polled = 0;
     let skipped = 0;
+    let ignored = 0;
     let newMaintenance = 0;
     let errors = 0;
     let processed = 0;
@@ -67,7 +102,7 @@ class PollQueue {
 
     const emitProgress = async () => {
       if (onProgress) {
-        await onProgress({ processed, polled, skipped, newMaintenance, errors });
+        await onProgress({ processed, polled, skipped, ignored, newMaintenance, errors });
       }
     };
 
@@ -97,7 +132,38 @@ class PollQueue {
           continue;
         }
 
+        if (history.status === "ignored") {
+          skipped++;
+          processed++;
+          await emitProgress();
+          continue;
+        }
+
         if (history.totalAttempts >= MAX_ATTEMPTS) {
+          const currentVehicle = await this.fetchCurrentVehicle(vehicle.id);
+
+          if (currentVehicle) {
+            history.vin = currentVehicle.vin || history.vin || vehicle.vin;
+            history.description =
+              currentVehicle.description || history.description || vehicle.description;
+
+            if (isVehicleDeactivated(currentVehicle)) {
+              history.status = "ignored";
+              history.ignoredAt = new Date();
+              history.ignoredReason = "Veiculo desativado/removido na revalidacao antes da manutencao";
+              await history.save();
+              ignored++;
+              processed++;
+              await emitProgress();
+
+              console.log(
+                `[PollQueue] IGNORADO: ${history.vin || vehicle.id} ` +
+                  `(status atual: ${history.description || "sem descricao"})`
+              );
+              continue;
+            }
+          }
+
           history.status = "maintenance";
           history.flaggedAt = new Date();
           await history.save();
@@ -149,7 +215,7 @@ class PollQueue {
       }
     }
 
-    return { polled, skipped, newMaintenance, errors };
+    return { polled, skipped, ignored, newMaintenance, errors };
   }
 }
 

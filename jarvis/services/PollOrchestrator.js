@@ -1,5 +1,5 @@
 import TokenManager from "./TokenManager.js";
-import PollScanner from "./PollScanner.js";
+import PollScanner, { isVehicleDeactivated } from "./PollScanner.js";
 import PollQueue from "./PollQueue.js";
 import getPollHistoryModel from "../models/PollHistory.js";
 import getPollExecutionModel from "../models/PollExecution.js";
@@ -82,6 +82,7 @@ class PollOrchestrator {
 
       let totalPolled = 0;
       let totalSkipped = 0;
+      let totalIgnored = 0;
       let totalNewMaintenance = 0;
       let totalErrors = 0;
 
@@ -109,6 +110,7 @@ class PollOrchestrator {
               await saveProgress({
                 totalPolled: totalPolled + progress.polled,
                 totalSkipped: totalSkipped + progress.skipped,
+                totalIgnored: totalIgnored + progress.ignored,
                 totalNewMaintenance: totalNewMaintenance + progress.newMaintenance,
                 totalErrors: totalErrors + progress.errors,
               });
@@ -117,6 +119,7 @@ class PollOrchestrator {
 
           totalPolled += queueResult.polled;
           totalSkipped += queueResult.skipped;
+          totalIgnored += queueResult.ignored;
           totalNewMaintenance += queueResult.newMaintenance;
           totalErrors += queueResult.errors;
 
@@ -181,6 +184,7 @@ class PollOrchestrator {
               await saveProgress({
                 totalPolled: totalPolled + progress.polled,
                 totalSkipped: totalSkipped + progress.skipped,
+                totalIgnored: totalIgnored + progress.ignored,
                 totalNewMaintenance: totalNewMaintenance + progress.newMaintenance,
                 totalErrors: totalErrors + progress.errors,
               });
@@ -189,6 +193,7 @@ class PollOrchestrator {
 
           totalPolled += extraResult.polled;
           totalSkipped += extraResult.skipped;
+          totalIgnored += extraResult.ignored;
           totalNewMaintenance += extraResult.newMaintenance;
           totalErrors += extraResult.errors;
         }
@@ -209,6 +214,7 @@ class PollOrchestrator {
       execution.totalDeactivated = scanStats.totalDeactivated;
       execution.totalPolled = totalPolled;
       execution.totalSkipped = totalSkipped;
+      execution.totalIgnored = totalIgnored;
       execution.totalNewMaintenance = totalNewMaintenance;
       execution.totalErrors = totalErrors;
       execution.tokenRefreshCount = tokenManager.getStats().refreshCount;
@@ -377,6 +383,78 @@ class PollOrchestrator {
     return {
       stopped: true,
       message: "Parada solicitada; a execucao vai encerrar no proximo ponto seguro",
+    };
+  }
+
+  static async revalidateMaintenance(options = {}) {
+    const limit = Math.min(Math.max(Number(options.limit) || 500, 1), 2000);
+    const dryRun = options.dryRun === true || options.dryRun === "true";
+    const PollHistory = await getPollHistoryModel();
+    const tokenManager = new TokenManager(CREDENTIALS);
+    const queue = new PollQueue({ tokenManager });
+
+    const histories = await PollHistory.find({ status: "maintenance" })
+      .sort({ lastMaintenanceRevalidatedAt: 1, flaggedAt: -1 })
+      .limit(limit);
+
+    let checked = 0;
+    let ignored = 0;
+    let stillMaintenance = 0;
+    let notFoundOrError = 0;
+    const sampleIgnored = [];
+
+    await mapLimit(histories, RECOVERY_CHECK_CONCURRENCY, async (history) => {
+      const currentVehicle = await queue.fetchCurrentVehicle(history.vehicleId);
+      checked++;
+
+      if (!currentVehicle) {
+        notFoundOrError++;
+        history.lastMaintenanceRevalidatedAt = new Date();
+        if (!dryRun) await history.save();
+        return;
+      }
+
+      const currentDescription = currentVehicle.description || history.description;
+      const currentVin = currentVehicle.vin || history.vin;
+
+      if (isVehicleDeactivated(currentVehicle)) {
+        ignored++;
+        if (sampleIgnored.length < 20) {
+          sampleIgnored.push({
+            vehicleId: history.vehicleId,
+            vin: currentVin,
+            previousDescription: history.description,
+            currentDescription,
+          });
+        }
+
+        if (!dryRun) {
+          history.status = "ignored";
+          history.vin = currentVin;
+          history.description = currentDescription;
+          history.ignoredAt = new Date();
+          history.ignoredReason = "Veiculo desativado/removido na revalidacao de manutencao";
+          history.lastMaintenanceRevalidatedAt = new Date();
+          await history.save();
+        }
+        return;
+      }
+
+      stillMaintenance++;
+      history.vin = currentVin;
+      history.description = currentDescription;
+      history.lastMaintenanceRevalidatedAt = new Date();
+      if (!dryRun) await history.save();
+    });
+
+    return {
+      dryRun,
+      limit,
+      checked,
+      ignored,
+      stillMaintenance,
+      notFoundOrError,
+      sampleIgnored,
     };
   }
 }
