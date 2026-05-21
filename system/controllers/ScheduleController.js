@@ -19,6 +19,31 @@ function resolveResponsible(data) {
   return data.responsible || data.createdBy || undefined;
 }
 
+const VIN_PATTERN = /^[A-HJ-NPR-Z0-9]{17}$/i;
+
+function normalizeVin(vin) {
+  return vin?.toString().trim().toUpperCase() || "";
+}
+
+function isValidVin(vin) {
+  return VIN_PATTERN.test(vin);
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function formatBulkUpdateError(error) {
+  if (!error.vin) return `Linha ${error.line}: ${error.message}`;
+
+  if (/^Chassi\s+/i.test(error.message)) {
+    const message = error.message.replace(/^Chassi\s+/i, "").toLowerCase();
+    return `Linha ${error.line}: Chassi ${error.vin} ${message}`;
+  }
+
+  return `Linha ${error.line}: Chassi ${error.vin} - ${error.message}`;
+}
+
 
 class ScheduleController {
   constructor() {
@@ -272,25 +297,25 @@ class ScheduleController {
 
       const { updates, errors } = await this.#processUpdates(schedules);
 
-      if (errors.length > 0) {
-        return res.status(400).json({ error: "Erros de validação", details: errors.slice(0, 20) });
-      }
-
       const { successCount, updateErrors } = await this.#executeUpdates(updates);
+      const allErrors = [...errors, ...updateErrors];
+      const statusCode = updates.length === 0 && allErrors.length > 0
+        ? 400
+        : allErrors.length > 0 ? 207 : 200;
 
-      if (updateErrors.length > 0) {
-        return res.status(207).json({
-          success: true,
-          count:   successCount,
-          message: `${successCount} modificado(s), ${updateErrors.length} falharam`,
-          errors:  updateErrors.slice(0, 10),
-        });
-      }
-
-      res.json({
-        success: true,
+      return res.status(statusCode).json({
+        success: statusCode !== 400,
+        ...(allErrors.length > 0 && { error: "Erros de validação" }),
+        updated: successCount,
+        failed:  allErrors.length,
         count:   successCount,
-        message: `${successCount} agendamento(s) modificado(s) com sucesso`,
+        message: `${successCount} agendamento(s) modificado(s)${
+          allErrors.length > 0 ? `, ${allErrors.length} falharam` : " com sucesso"
+        }`,
+        ...(allErrors.length > 0 && {
+          errors:  allErrors,
+          details: allErrors.map(formatBulkUpdateError),
+        }),
       });
     } catch (error) {
       handleError(res, error);
@@ -348,20 +373,71 @@ class ScheduleController {
   async #processUpdates(schedules) {
     const errors  = [];
     const updates = [];
+    const validRows = [];
 
-    for (let i = 0; i < schedules.length; i++) {
-      const schedule = schedules[i];
-      if (!schedule.vin) {
-        errors.push(`Linha ${i + 1}: Chassi obrigatório`);
+    schedules.forEach((schedule, i) => {
+      const line = i + 1;
+      const vin = normalizeVin(schedule.vin);
+      const rowErrors = [];
+
+      if (!vin) {
+        rowErrors.push("Chassi obrigatório");
+      } else if (!isValidVin(vin)) {
+        rowErrors.push("Chassi inválido");
+      }
+
+      if (schedule.serviceType) {
+        const serviceType = normalizeServiceType(schedule.serviceType);
+        if (!serviceType) {
+          rowErrors.push(`Tipo de serviço inválido: "${schedule.serviceType}"`);
+        }
+      }
+
+      if (rowErrors.length > 0) {
+        rowErrors.forEach((message) => errors.push({ line, vin: vin || null, message }));
+        return;
+      }
+
+      validRows.push({ line, vin, schedule });
+    });
+
+    if (validRows.length === 0) {
+      return { updates, errors };
+    }
+
+    const Schedule = await getScheduleModel();
+    const vinRegexes = validRows.map(({ vin }) => new RegExp(`^${escapeRegExp(vin)}$`, "i"));
+    const existingSchedules = await Schedule.find({ vin: { $in: vinRegexes } })
+      .select("vin serviceType product")
+      .lean();
+
+    const schedulesByVin = new Map(
+      existingSchedules.map((schedule) => [normalizeVin(schedule.vin), schedule])
+    );
+
+    for (const { line, vin, schedule } of validRows) {
+      const existingSchedule = schedulesByVin.get(vin);
+
+      if (!existingSchedule) {
+        errors.push({ line, vin, message: "Chassi não encontrado" });
         continue;
       }
-      const Schedule = await getScheduleModel();
-      const exists   = await Schedule.exists({ vin: schedule.vin });
-      if (!exists) {
-        errors.push(`Linha ${i + 1}: Chassi ${schedule.vin} não encontrado`);
+
+      const updateData = this.#buildUpdateData(schedule);
+      delete updateData.vin;
+      const resultingServiceType = updateData.serviceType || existingSchedule.serviceType;
+
+      if (resultingServiceType === "installation" && !updateData.product && !existingSchedule.product) {
+        errors.push({ line, vin, message: "Produto obrigatório para instalação" });
         continue;
       }
-      updates.push({ vin: schedule.vin, updateData: this.#buildUpdateData(schedule) });
+
+      if (Object.keys(updateData).length === 0) {
+        errors.push({ line, vin, message: "Nenhum campo válido para atualizar" });
+        continue;
+      }
+
+      updates.push({ vin: existingSchedule.vin, updateData, line });
     }
 
     return { updates, errors };
@@ -372,6 +448,7 @@ class ScheduleController {
     const normalizers = {
       status:      (v) => normalizeStatus(v),
       serviceType: (v) => normalizeServiceType(v),
+      vin:         (v) => normalizeVin(v),
     };
 
     const ALL_FIELDS = [
@@ -405,6 +482,10 @@ class ScheduleController {
     let successCount  = 0;
     const updateErrors = [];
 
+    if (updates.length === 0) {
+      return { successCount, updateErrors };
+    }
+
     const Schedule = await getScheduleModel();
     const bulkOps  = updates.map(({ vin, updateData }) => ({
       updateOne: { filter: { vin }, update: { $set: updateData } },
@@ -415,9 +496,16 @@ class ScheduleController {
       successCount = result.modifiedCount;
     } catch (error) {
       if (error.writeErrors) {
-        error.writeErrors.forEach((e) => updateErrors.push(e.errmsg));
+        error.writeErrors.forEach((e) => {
+          const failedUpdate = updates[e.index] || {};
+          updateErrors.push({
+            line: failedUpdate.line || null,
+            vin:  failedUpdate.vin || null,
+            message: e.errmsg || e.message || "Falha ao atualizar agendamento",
+          });
+        });
       }
-      successCount = error.result?.nModified || 0;
+      successCount = error.result?.nModified || error.result?.modifiedCount || 0;
     }
 
     return { successCount, updateErrors };
